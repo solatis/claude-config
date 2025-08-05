@@ -3,8 +3,8 @@
 Personal collection of Claude agents and commands.
 
 ```
-agents/         # Specialized agents (architect, debugger, developer, etc.)
-commands/       # Commands like plan-execution
+agents/                # Specialized agents (architect, debugger, developer, etc.)
+commands/              # Commands like plan-execution
 prompt-engineering.md  # Prompt optimization techniques
 ```
 
