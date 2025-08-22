@@ -89,7 +89,7 @@ But ONLY after meeting minimum evidence requirements!
 1. Memory corruption/segfaults → HIGHEST PRIORITY
 2. Race conditions/deadlocks
 3. Resource leaks
-4. Logic errors                                                                                  ..
+4. Logic errors
 5. Integration issues
 
 
