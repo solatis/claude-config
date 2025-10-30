@@ -1,5 +1,3 @@
-
-
 (Prompt Architecture) -> (Prompt Architecture) -> (Technique)
 
 Base Instructions -> Behavioral Shaping        -> CAPITAL EMPHASIS
