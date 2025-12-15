@@ -1,5 +1,8 @@
 # Claude Commands & Agents
 
+[![Run in Smithery](https://smithery.ai/badge/skills/solatis)](https://smithery.ai/skills?ns=solatis&utm_source=github&utm_medium=badge)
+
+
 Personal collection of Claude agents and commands.
 
 ```
