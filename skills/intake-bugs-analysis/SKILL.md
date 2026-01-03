@@ -1,12 +1,27 @@
 ---
 name: intake-bugs-analysis
-description: Automated bug analysis for Intake team - matches bugs to exports, runs AI analysis with Claude, and discovers patterns to reduce no-code bugs
+description: Invoke IMMEDIATELY via python script to run Intake bug analysis. Use when asked to "run intake bugs analysis", "analyze intake bugs", or "use intake-bugs-analysis skill". Do NOT activate on general bug discussions.
 ---
 
 # Intake Bugs Analysis
 
 Analyzes bugs reported by the Operations team to identify patterns, root causes,
 and actionable improvements. Part of the Bugs Initiative to reduce no-code bugs.
+
+## Activation
+
+This skill should ONLY activate when the user explicitly requests it:
+
+**Trigger phrases (activate):**
+- "run intake bugs analysis"
+- "analyze intake bugs"
+- "use intake-bugs-analysis skill"
+- "run the bug analysis pipeline"
+
+**Do NOT activate on:**
+- General bug discussions ("let's analyze this bug")
+- Questions about bug patterns ("what patterns do we see?")
+- Other bug-related tasks without explicit skill invocation
 
 ## Invocation
 
@@ -24,12 +39,15 @@ When this skill activates:
 
 3. **Set working directory**: `cd logs/bug-analysis`
 
-4. **Display summary before running**:
+4. **Display summary and request confirmation**:
    - Total bugs found in CSV
    - HTML files matched
    - Estimated time (~3 seconds per bug)
+   - **Ask: "Proceed with analysis? (yes/no)"**
+   - **STOP and wait for user confirmation**
+   - If user declines, abort gracefully
 
-5. **Run the pipeline**:
+5. **Run the pipeline** (only after confirmation):
    ```bash
    python3 ~/.claude/skills/intake-bugs-analysis/scripts/run_full_analysis.py --period "{period}" --timeout 120
    ```
