@@ -85,19 +85,27 @@ class PatternAnalyzer:
 You have {len(analyses)} bug analyses above. Identify recurring patterns by ROOT CAUSE (not symptoms).
 
 <step_1_scan>
-First, scan all bugs and note the root causes mentioned. Look for:
+First, scan all bugs and note the root causes mentioned. Look for the PRIMARY root cause - the fix that would have prevented the bug:
 - Similar technical causes (validation gaps, async failures, workflow issues)
 - Similar resolution types (code fix vs manual fix vs not-a-bug)
-- Bugs that reference the same system areas
+- Same system areas
+When a bug has multiple causes, ask: What single fix would have prevented this?
 </step_1_scan>
 
-<step_2_categorize>
-Group bugs into 4-8 categories. Each category must have:
-- At least 2 bugs (patterns need repetition)
-- A clear root cause theme (not just "miscellaneous")
-- Actionable fix recommendations
+<category_guidance>
+Categories must be DISTINCT. Example:
+- WRONG: "Feature Flag Issues" and "Multi-Tenancy Issues" - both describe tenant config problems
+- RIGHT: "Tenant Configuration" (covers both) OR split by mechanism: "Missing Flag Checks" vs "Missing Query Scoping"
+</category_guidance>
 
-Before marking any bug as uncategorized, try broadening the category definition. Only truly unique bugs with no shared characteristics belong in "Uncategorized".
+<step_2_categorize>
+Group bugs into 4-8 MUTUALLY EXCLUSIVE categories:
+- Each bug belongs to exactly ONE category (no double-counting)
+- When a bug has multiple issues, assign to the PRIMARY root cause
+- At least 2 bugs per category (patterns need repetition)
+- Categories must have distinct, non-overlapping definitions
+
+Before marking any bug as uncategorized, try broadening the category definition. Only truly unique bugs belong in "Uncategorized".
 </step_2_categorize>
 
 <output_format>
@@ -121,11 +129,11 @@ Before marking any bug as uncategorized, try broadening the category definition.
 
 ## Priority Recommendations
 
-Rank by impact (bugs prevented × effort required):
+Rank by impact (bugs addressed × effort required):
 
-1. **[P0] [Action]**: Prevents [X] bugs ([Y]%) - [1 sentence why]
-2. **[P1] [Action]**: Prevents [X] bugs ([Y]%) - [1 sentence why]
-3. **[P2] [Action]**: Prevents [X] bugs ([Y]%) - [1 sentence why]
+1. **[P0] [Action]**: Addresses [X] bugs from Category [N] ([Y]%) - [1 sentence why]
+2. **[P1] [Action]**: Addresses [X] bugs from Category [N] ([Y]%) - [1 sentence why]
+3. **[P2] [Action]**: Addresses [X] bugs from Category [N] ([Y]%) - [1 sentence why]
 
 ## Key Insights
 
@@ -136,6 +144,7 @@ Rank by impact (bugs prevented × effort required):
 ## Verification
 
 Total bugs categorized: [X] / {len(analyses)}
+Sum of category counts: [X] (must equal total above - if higher, bugs are double-counted)
 Categories with 3+ bugs: [list]
 Uncategorized: [X] bugs
 </output_format>
