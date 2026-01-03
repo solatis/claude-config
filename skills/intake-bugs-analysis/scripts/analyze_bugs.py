@@ -12,18 +12,21 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from bs4 import BeautifulSoup
 
 
 class BugAnalyzer:
-    def __init__(self, csv_path, html_dir, output_dir, claude_timeout=60):
+    def __init__(self, csv_path, html_dir, output_dir, claude_timeout=60, workers=4):
         self.csv_path = Path(csv_path)
         self.html_dir = Path(html_dir)
         self.output_dir = Path(output_dir)
         self.claude_timeout = claude_timeout
+        self.workers = workers
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def extract_bug_data(self, html_path):
@@ -201,35 +204,29 @@ Output ONLY the formatted summary. No preamble, no explanation."""
         bug_title = bug["Name"]
         html_file = bug.get("HTML_File", "")
 
-        print(f"\n[{index + 1}/{total}] {bug_id}: {bug_title[:60]}...")
+        print(f"🔄 [{index + 1}/{total}] {bug_id}: {bug_title[:50]}...")
 
         if html_file == "NOT_FOUND":
-            print("  ⚠️  HTML file not found - skipping")
+            print(f"⚠️  [{index + 1}/{total}] {bug_id}: HTML not found")
             return False
 
         html_path = self.html_dir / html_file
         if not html_path.exists():
-            print(f"  ⚠️  HTML file does not exist: {html_file}")
+            print(f"⚠️  [{index + 1}/{total}] {bug_id}: HTML missing")
             return False
 
         # Extract data
-        print("  📄 Extracting data from HTML...")
         try:
             data = self.extract_bug_data(html_path)
         except Exception as e:
-            print(f"  ❌ Error extracting data: {e}")
+            print(f"❌ [{index + 1}/{total}] {bug_id}: Extract error - {e}")
             return False
 
-        print(
-            f"  ℹ️  Status: {data['status']} | PR: {'Yes' if data['pr_link'] else 'No'} | Comments: {len(data['comments'])}"
-        )
-
         # Analyze with Claude
-        print("  🤖 Analyzing with Claude...")
         summary = self.analyze_with_claude(bug_id, bug_title, data)
 
         if summary.startswith("Error"):
-            print(f"  ❌ {summary}")
+            print(f"❌ [{index + 1}/{total}] {bug_id}: {summary}")
             return False
 
         # Save result
@@ -242,7 +239,7 @@ Output ONLY the formatted summary. No preamble, no explanation."""
                 f.write(f"**PR**: {data['pr_link']}\n")
             f.write("\n---\n")
 
-        print(f"  ✅ Analysis saved to: {output_file.name}")
+        print(f"✅ [{index + 1}/{total}] {bug_id}: Done")
         return True
 
     def run(self, start_from=0, end_at=None, resume=True):
@@ -274,26 +271,32 @@ Output ONLY the formatted summary. No preamble, no explanation."""
             print("\n✅ All bugs already analyzed!")
             return
 
-        # Analyze bugs
-        print("\nStarting analysis...")
+        # Analyze bugs in parallel
+        print(f"\nStarting analysis with {self.workers} parallel workers...")
         print("=" * 80)
 
         successful = 0
         failed = 0
+        total = len(bugs_to_analyze)
 
-        for i, bug in enumerate(bugs_to_analyze):
-            success = self.analyze_bug(
-                bug, i, len(bugs_to_analyze)
-            )
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            # Submit all tasks
+            future_to_bug = {
+                executor.submit(self.analyze_bug, bug, i, total): bug
+                for i, bug in enumerate(bugs_to_analyze)
+            }
 
-            if success:
-                successful += 1
-            else:
-                failed += 1
-
-            # Small delay between API calls
-            if i < len(bugs_to_analyze) - 1:
-                time.sleep(1)
+            # Collect results as they complete
+            for future in as_completed(future_to_bug):
+                try:
+                    success = future.result()
+                    if success:
+                        successful += 1
+                    else:
+                        failed += 1
+                except Exception as e:
+                    print(f"  ❌ Worker error: {e}")
+                    failed += 1
 
         # Summary
         print("\n" + "=" * 80)
@@ -345,6 +348,12 @@ def main():
         default=60,
         help="Claude CLI timeout in seconds",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of parallel workers (default: 4)",
+    )
 
     args = parser.parse_args()
 
@@ -353,6 +362,7 @@ def main():
         html_dir=args.html_dir,
         output_dir=args.output_dir,
         claude_timeout=args.timeout,
+        workers=args.workers,
     )
 
     analyzer.run(
