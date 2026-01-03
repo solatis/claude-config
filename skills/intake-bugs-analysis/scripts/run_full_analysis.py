@@ -57,12 +57,12 @@ Examples:
 
     parser.add_argument(
         "--csv-path",
-        default="../data/bug_list.csv",
+        default="inputs/bug_list.csv",
         help="Path to bug list CSV file",
     )
     parser.add_argument(
         "--html-dir",
-        default="../data/exports",
+        default="inputs/exports",
         help="Directory containing HTML exports",
     )
     parser.add_argument(
@@ -120,7 +120,7 @@ Examples:
         print("\n🤖 Step 2: Analyzing individual bugs with Claude...")
         analysis_args = [
             "--csv-path",
-            "../data/bug_list_matched.csv",
+            "inputs/bug_list_matched.csv",
             "--html-dir",
             args.html_dir,
             "--timeout",
@@ -151,12 +151,8 @@ Examples:
     print("✅ Pipeline complete!")
     print("=" * 80)
     print("\n📂 Results:")
-    print("  - Individual analyses: ../data/results/individual/")
-    print("  - Pattern summary: ../data/results/summary/pattern_analysis.md")
-    print("\n💡 Next steps:")
-    print("  1. Review the pattern analysis report")
-    print("  2. Share findings with your team")
-    print("  3. Create action items for top priorities")
+    print("  - Individual analyses: outputs/individual/")
+    print("  - Pattern summary: outputs/summary/pattern_analysis.md")
 
 
 if __name__ == "__main__":

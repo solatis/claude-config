@@ -1,3 +1,12 @@
+<!--
+Template for Notion-ready output. Fill placeholders from outputs/summary/pattern_analysis.md:
+- {period}: Analysis period (e.g., "December 2025")
+- {date}: Generation date
+- {N}: Count values
+- {%}: Percentage values
+- {Category Name}, {Bug ID}, etc.: From pattern analysis categories
+-->
+
 ## **Intake | Automated Analysis | {period}**
 
 Analysis by Claude Code on {date}
@@ -103,9 +112,9 @@ Priority order by impact:
 
 {Comma-separated list of all bug IDs analyzed}
 
-**Detailed analysis**: See `bug-analysis/data/results/individual/` for individual bug root causes
+**Detailed analysis**: See `outputs/individual/` for individual bug root causes
 
-**Full report**: `bug-analysis/data/results/summary/pattern_analysis.md`
+**Full report**: `outputs/summary/pattern_analysis.md`
 
 ---
 

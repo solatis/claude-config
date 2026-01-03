@@ -63,17 +63,17 @@ def main():
     )
     parser.add_argument(
         "--csv-path",
-        default="../data/bug_list.csv",
+        default="inputs/bug_list.csv",
         help="Path to bug list CSV file",
     )
     parser.add_argument(
         "--html-dir",
-        default="../data/exports",
+        default="inputs/exports",
         help="Directory containing HTML exports",
     )
     parser.add_argument(
         "--output",
-        default="../data/bug_list_matched.csv",
+        default="inputs/bug_list_matched.csv",
         help="Output CSV file with HTML file mappings",
     )
 

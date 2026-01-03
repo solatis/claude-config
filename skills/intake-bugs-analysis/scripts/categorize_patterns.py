@@ -97,7 +97,7 @@ Group bugs into 4-8 categories. Each category must have:
 - A clear root cause theme (not just "miscellaneous")
 - Actionable fix recommendations
 
-If a bug doesn't fit any pattern, put it in "Uncategorized (single occurrences)" at the end.
+Before marking any bug as uncategorized, try broadening the category definition. Only truly unique bugs with no shared characteristics belong in "Uncategorized".
 </step_2_categorize>
 
 <output_format>
@@ -275,12 +275,12 @@ def main():
     )
     parser.add_argument(
         "--input-dir",
-        default="../data/results/individual",
+        default="outputs/individual",
         help="Directory containing individual bug analyses",
     )
     parser.add_argument(
         "--output",
-        default="../data/results/summary/pattern_analysis.md",
+        default="outputs/summary/pattern_analysis.md",
         help="Output file for pattern analysis report",
     )
     parser.add_argument(

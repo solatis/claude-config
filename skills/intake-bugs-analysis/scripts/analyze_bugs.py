@@ -129,16 +129,17 @@ Analyze the bug above and provide a concise summary.
 **Key Findings**:
 - [Finding 1]
 - [Finding 2]
-(include 2-5 findings based on complexity - only what's relevant)
 
 **Resolution**: [Category] - [brief explanation]
+</format>
+
+Key Findings: Include 2-5 findings based on complexity.
 
 Resolution categories:
 - Code fix: Required code changes (new feature, bug fix, validation)
 - Manual fix: Ops resolved without code (data correction, config change)
 - Not a bug: Working as intended, user error, or duplicate
 - Pending: Still under investigation or blocked
-</format>
 
 <example type="good">
 **Root Cause**: PATCH endpoint missing uniqueness validation that POST endpoint had, allowing duplicate VAT numbers on update.
@@ -308,17 +309,17 @@ def main():
     )
     parser.add_argument(
         "--csv-path",
-        default="../data/bug_list_matched.csv",
+        default="inputs/bug_list_matched.csv",
         help="Path to matched bug list CSV",
     )
     parser.add_argument(
         "--html-dir",
-        default="../data/exports",
+        default="inputs/exports",
         help="Directory containing HTML exports",
     )
     parser.add_argument(
         "--output-dir",
-        default="../data/results/individual",
+        default="outputs/individual",
         help="Output directory for analysis results",
     )
     parser.add_argument(
