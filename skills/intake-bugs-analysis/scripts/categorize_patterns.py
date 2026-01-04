@@ -25,6 +25,62 @@ def add_notion_links(text):
     )
 
 
+def validate_output(text, expected_count):
+    """Validate Claude's output for cross-references, duplicates, and count.
+
+    Returns list of error strings (empty if valid).
+    """
+    errors = []
+
+    # Extract PIVOT-IDs from "Most Valuable Actions" section
+    actions_section = re.search(
+        r'### 💪 Most Valuable Actions\n(.*?)(?=### Bug Index|$)',
+        text, re.DOTALL
+    )
+    action_ids = set(re.findall(r'PIVOT-\d+', actions_section.group(1))) if actions_section else set()
+
+    # Extract PIVOT-IDs from "Bug Index" section, grouped by category
+    index_section = re.search(r'### Bug Index by Feature\n(.*?)$', text, re.DOTALL)
+    index_text = index_section.group(1) if index_section else ""
+
+    # Parse categories: **Category (N)**
+    category_pattern = r'\*\*([^*]+)\s*\((\d+)\)\*\*\n(.*?)(?=\*\*[^*]+\s*\(\d+\)\*\*|$)'
+    categories = re.findall(category_pattern, index_text, re.DOTALL)
+
+    all_index_ids = set()
+    category_ids = {}  # category -> set of IDs
+
+    for cat_name, count, cat_content in categories:
+        cat_name = cat_name.strip()
+        ids = set(re.findall(r'PIVOT-\d+', cat_content))
+        category_ids[cat_name] = ids
+        all_index_ids.update(ids)
+
+    # Check 1: Cross-reference - all action IDs must be in index
+    missing_from_index = action_ids - all_index_ids
+    if missing_from_index:
+        errors.append(f"Cross-reference: {len(missing_from_index)} bug(s) in Actions but missing from Index: {', '.join(sorted(missing_from_index))}")
+
+    # Check 2: No duplicates across categories
+    seen = set()
+    duplicates = set()
+    for cat_name, ids in category_ids.items():
+        for bug_id in ids:
+            if bug_id in seen:
+                duplicates.add(bug_id)
+            seen.add(bug_id)
+
+    if duplicates:
+        errors.append(f"Duplicates: {len(duplicates)} bug(s) appear in multiple categories: {', '.join(sorted(duplicates))}")
+
+    # Check 3: Count matches expected
+    actual_count = len(all_index_ids)
+    if actual_count != expected_count:
+        errors.append(f"Count mismatch: Bug Index has {actual_count} bugs, expected {expected_count}")
+
+    return errors
+
+
 class PatternAnalyzer:
     def __init__(self, input_dir, output_path, period="Unknown Period"):
         self.input_dir = Path(input_dir)
@@ -158,7 +214,7 @@ Silently perform these steps. Do NOT output this analysis.
 2. Tag each bug with root cause type:
    Validation gap | Configuration error | Async/timing | Data mapping | External service | User error
 
-3. Group into mutually exclusive categories (each bug in exactly one feature area).
+3. Group into mutually exclusive categories.
 
 4. Identify cross-cutting patterns: root causes appearing in 2+ feature areas with 3+ bugs total.
 
@@ -166,10 +222,15 @@ Silently perform these steps. Do NOT output this analysis.
 </internal_analysis>
 
 <verification_checkpoint>
-Before outputting, verify internally:
-1. Count bugs assigned to each feature category
-2. Sum must equal {len(resolved_analyses)}
-3. If mismatch, find missing or duplicate bugs and fix
+Before outputting, verify these invariants:
+1. CROSS-REFERENCE: Every PIVOT-ID in "Most Valuable Actions" appears in "Bug Index"
+2. NO DUPLICATES: Each PIVOT-ID appears in exactly ONE Bug Index category
+3. COUNT CHECK: Sum of bugs across all categories equals {len(resolved_analyses)}
+
+If any check fails:
+- Cross-reference fail: Add missing bug to appropriate Bug Index category
+- Duplicate fail: Remove bug from all but one category (keep most relevant)
+- Count fail: Find missing/extra bugs and fix
 
 Do NOT include this verification in your output.
 </verification_checkpoint>
@@ -189,31 +250,40 @@ Problem: Same bug (PIVOT-22670) and fix appear 3 times. Output too long and redu
 
 <example type="right">
 ### 💪 Most Valuable Actions
-- [ ] **[Validation]** Shared validation service (12 bugs: PIVOT-22399, PIVOT-22670, PIVOT-23629...)
+- [ ] **[Validation]** Shared validation service
     - Why: 27% of bugs stem from inconsistent validation across endpoints
+    - Bugs (12): PIVOT-22399, PIVOT-22670, PIVOT-23629...
 ### Bug Index by Feature
 **Workflow (11)**: PIVOT-22670, PIVOT-22649, PIVOT-22772, PIVOT-22778...
 **Vendor (9)**: PIVOT-22399, PIVOT-23629, PIVOT-23524...
 Benefit: Actions summarize fixes for Engineering. Index provides navigation for Ops. No duplication.
 </example>
 
+<example type="wrong">
+Duplicate bug across categories:
+**Workflow (11)**: PIVOT-22670, PIVOT-23343...
+**Vendor Onboarding (5)**: PIVOT-23343, PIVOT-22431...
+Problem: PIVOT-23343 appears in both Workflow AND Vendor Onboarding. Each bug must appear in exactly one category.
+</example>
+
+<example type="right">
+**Workflow (11)**: PIVOT-22670, PIVOT-22649...
+**Vendor Onboarding (5)**: PIVOT-23343, PIVOT-22431...
+Fix: PIVOT-23343 appears only in Vendor Onboarding (its primary feature area).
+</example>
+
 <output_format>
-Output ONLY these two sections. No separators (---), no feature breakdowns, no cross-cutting patterns section, no verification section.
+Output exactly these two sections: Most Valuable Actions and Bug Index by Feature. No separators (---).
 
 ### 💪 Most Valuable Actions
 
 Top 5 actions by impact (bugs addressed). Each action references the specific bugs it would fix.
 
-- [ ] **[Fix Type]** Action description (X bugs: PIVOT-ID1, PIVOT-ID2, PIVOT-ID3...)
+- [ ] **[Fix Type]** Action description
     - Why: 1-sentence justification linking to root cause pattern
-- [ ] **[Fix Type]** Action description (X bugs: ...)
-    - Why: justification
-- [ ] **[Fix Type]** Action description (X bugs: ...)
-    - Why: justification
-- [ ] **[Fix Type]** Action description (X bugs: ...)
-    - Why: justification
-- [ ] **[Fix Type]** Action description (X bugs: ...)
-    - Why: justification
+    - Bugs (X): PIVOT-ID1, PIVOT-ID2...
+
+(Provide exactly 5 actions in this format, ranked by bug count)
 
 ### Bug Index by Feature
 
@@ -249,29 +319,63 @@ Output the analysis now. Use actual bug IDs from the data above."""
 
         try:
             print("  🤖 Analyzing patterns with Claude (this may take a minute)...")
-            result = subprocess.run(
-                ["claude", "-p", prompt],
-                capture_output=True,
-                text=True,
-                timeout=180,  # 3 minute timeout for pattern analysis
-            )
 
-            if result.returncode == 0:
-                return result.stdout.strip()
-            else:
-                print(f"Error calling Claude: {result.stderr}")
+            def call_claude(p):
+                r = subprocess.run(
+                    ["claude", "-p", p],
+                    capture_output=True,
+                    text=True,
+                    timeout=180,
+                )
+                return r.stdout.strip() if r.returncode == 0 else None
+
+            # First attempt
+            output = call_claude(prompt)
+            if not output:
+                print("  ❌ Error: Claude returned no output")
                 return None
 
+            # Validate output
+            errors = validate_output(output, len(resolved_analyses))
+
+            if errors:
+                # Warn user about validation failure
+                print(f"  ⚠️  Validation failed: {'; '.join(errors)}")
+                print("  🔄 Re-prompting with error feedback...")
+
+                # Build retry prompt with error feedback
+                retry_prompt = f"""{prompt}
+
+<validation_errors>
+Your previous output had these errors:
+{chr(10).join(f'- {e}' for e in errors)}
+
+Fix these issues in your response. Ensure:
+1. Every bug in "Most Valuable Actions" appears in "Bug Index"
+2. Each bug appears in exactly ONE Bug Index category
+3. Total bug count equals {len(resolved_analyses)}
+</validation_errors>"""
+
+                # Retry
+                output = call_claude(retry_prompt)
+                if output:
+                    retry_errors = validate_output(output, len(resolved_analyses))
+                    if retry_errors:
+                        print(f"  ⚠️  Validation still failed after retry: {'; '.join(retry_errors)}")
+                        # Continue with output anyway
+
+            return output
+
         except subprocess.TimeoutExpired:
-            print("Error: Claude CLI timed out")
+            print("  ❌ Error: Claude CLI timed out")
             return None
         except FileNotFoundError:
             print(
-                "Error: Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
+                "  ❌ Error: Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
             )
             return None
         except Exception as e:
-            print(f"Error: {str(e)}")
+            print(f"  ❌ Error: {str(e)}")
             return None
 
     def generate_report(self, analyses, stats, pattern_analysis):
