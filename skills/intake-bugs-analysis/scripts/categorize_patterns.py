@@ -147,148 +147,105 @@ These should be manually reviewed to understand why due process was not followed
 {combined_text}
 </bug_analyses>
 
-<re_reading_instruction>
-Read through each bug analysis again, noting recurring themes across feature areas. Pay attention to:
-- Similar error patterns appearing in different features
-- Common root cause types (validation, timing, configuration)
-- Bugs that might share an underlying systemic issue
-</re_reading_instruction>
+You have {len(resolved_analyses)} resolved bug analyses above{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}{f" (excludes {len(undocumented_bugs)} requiring manual review)" if undocumented_bugs else ""}.
 
-You have {len(resolved_analyses)} resolved bug analyses above{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}{f" (excludes {len(undocumented_bugs)} requiring manual review)" if undocumented_bugs else ""}. Categorize using a HYBRID approach.
+<internal_analysis>
+Silently perform these steps. Do NOT output this analysis.
 
-<step_1_feature_area>
-Scan all bugs and categorize each by PRIMARY feature area:
-- Workflow (approvers, conditions, steps, delegation, workflow logic)
-- Vendor / Vendor Onboarding (vendor portal, onboarding forms, vendor data)
-- Notifications (email, Slack notifications, comments sync)
-- Integrations (Slack events, ERP sync, external services)
-- Forms / Models (form builder, model publishing, field configuration)
-- Permissions / Access (user permissions, visibility, login)
-- Data / API (field mapping, API responses, data display)
-- Validation / Errors (missing validation, error handling, 500 errors)
-</step_1_feature_area>
+1. Categorize each bug by PRIMARY feature area:
+   Workflow | Vendor | Notifications | Integrations | Forms | Permissions | Data/API
 
-<step_2_root_cause>
-For each bug, ALSO note its root cause type (for cross-cutting patterns later):
-- Validation gap (missing or inconsistent validation)
-- Configuration error (wrong settings, feature flags, user setup)
-- Async/timing issue (race conditions, state sync, webhook failures)
-- Data mapping error (field not returned, wrong format, DTO mismatch)
-- External service failure (Slack, ERP, third-party outage)
-- User error / Not a bug (working as designed, misunderstanding)
-</step_2_root_cause>
+2. Tag each bug with root cause type:
+   Validation gap | Configuration error | Async/timing | Data mapping | External service | User error
 
-<step_3_categorize>
-Group bugs into MUTUALLY EXCLUSIVE feature categories:
-- Each bug belongs to exactly ONE feature category (no double-counting)
-- When a bug touches multiple areas, assign to PRIMARY feature where fix belongs
-- Merge small categories (<2 bugs) into related ones
-</step_3_categorize>
+3. Group into mutually exclusive categories (each bug in exactly one feature area).
 
-<inline_verification>
-Before outputting, verify your categorization:
-1. Count bugs in each category
-2. Sum all category counts
-3. Compare to total resolved bugs ({len(resolved_analyses)})
+4. Identify cross-cutting patterns: root causes appearing in 2+ feature areas with 3+ bugs total.
 
-If sum != {len(resolved_analyses)}:
-- Check for missed bugs (search for any PIVOT-ID not assigned)
-- Check for duplicates (any PIVOT-ID appearing twice)
-- Fix before outputting
+5. Synthesize top 5 actions that address the most bugs across categories.
+</internal_analysis>
 
-This verification MUST pass. Do not output until sum equals total.
-</inline_verification>
+<verification_checkpoint>
+Before outputting, verify internally:
+1. Count bugs assigned to each feature category
+2. Sum must equal {len(resolved_analyses)}
+3. If mismatch, find missing or duplicate bugs and fix
+
+Do NOT include this verification in your output.
+</verification_checkpoint>
 
 <example type="wrong">
-Output shows only root-cause categories:
-### 1. Missing Backend Validation (9 bugs)
-### 2. External Integration Failures (7 bugs)
-Problem: Hides which FEATURES are affected. Ops can't find their bugs.
+Output with duplicate content:
+### 1. Workflow
+- PIVOT-22670: Wrong approver assigned → [Validation] Add condition check
+🔧 Potential fixes:
+- [ ] Add validation check
+### Cross-Cutting Patterns
+**Validation Gaps** (12 bugs): PIVOT-22670, PIVOT-22399...
+### Most valuable actions
+- [ ] **[Validation]** Add condition check (PIVOT-22670...)
+Problem: Same bug (PIVOT-22670) and fix appear 3 times. Output too long and redundant.
 </example>
 
 <example type="right">
-PART 1 shows feature areas (for Ops):
-### Workflow (11 bugs)
-### Vendor Onboarding (8 bugs)
-
-PART 2 shows cross-cutting patterns (for Engineering):
-### Validation Gaps (9 bugs across Workflow, Vendor, Forms)
-Single fix: Shared validation service prevents 18% of bugs
-
-Benefit: Ops find bugs by feature, Engineers find systemic fixes.
+### 💪 Most Valuable Actions
+- [ ] **[Validation]** Shared validation service (12 bugs: PIVOT-22399, PIVOT-22670, PIVOT-23629...)
+    - Why: 27% of bugs stem from inconsistent validation across endpoints
+### Bug Index by Feature
+**Workflow (11)**: PIVOT-22670, PIVOT-22649, PIVOT-22772, PIVOT-22778...
+**Vendor (9)**: PIVOT-22399, PIVOT-23629, PIVOT-23524...
+Benefit: Actions summarize fixes for Engineering. Index provides navigation for Ops. No duplication.
 </example>
 
 <output_format>
-(All ### headers become H3 toggle sections in Notion. NO separators between sections.)
+Output ONLY these two sections. No separators (---), no feature breakdowns, no cross-cutting patterns section, no verification section.
 
-### 1. Workflow
+### 💪 Most Valuable Actions
 
-- **No approver / Wrong approver in workflow**
-    - [PIVOT-ID] Brief description of the specific issue
-        → [Fix Type] Suggested action item
+Top 5 actions by impact (bugs addressed). Each action references the specific bugs it would fix.
 
-- **Skipped steps / Extra steps in workflow**
-    - [PIVOT-ID] Brief description
+- [ ] **[Fix Type]** Action description (X bugs: PIVOT-ID1, PIVOT-ID2, PIVOT-ID3...)
+    - Why: 1-sentence justification linking to root cause pattern
+- [ ] **[Fix Type]** Action description (X bugs: ...)
+    - Why: justification
+- [ ] **[Fix Type]** Action description (X bugs: ...)
+    - Why: justification
+- [ ] **[Fix Type]** Action description (X bugs: ...)
+    - Why: justification
+- [ ] **[Fix Type]** Action description (X bugs: ...)
+    - Why: justification
 
-🔧 Potential fixes:
-- [ ] Action item 1
-- [ ] Action item 2
+### Bug Index by Feature
 
-### 2. Vendor Onboarding
+Grouped by feature area, sorted by bug count descending. Each bug has description and suggested fix for auditability.
 
-(Same structure: sub-headers grouping similar bugs, bullets with PIVOT-IDs, fix suggestions, then 🔧 Potential fixes)
+**Workflow (N)**
+- PIVOT-ID1 *short description of issue*
+    → [Fix Type] suggested action
+- PIVOT-ID2 *short description*
+    → [Fix Type] suggested action
 
-(Continue numbering: ### 3. ..., ### 4. ..., etc. for each feature area, ordered by bug count descending)
+**Vendor (N)**
+- PIVOT-ID1 *short description*
+    → [Fix Type] suggested action
 
-### Cross-Cutting Patterns
+(Continue for each feature area: Integrations, Forms, Permissions, Data/API)
 
-Root causes spanning multiple feature areas:
-
-**[Root Cause Name]** ([X] bugs across [Y] features)
-- Pattern: [1-2 sentence description]
-- Bug IDs: PIVOT-1234, PIVOT-5678...
-- Single fix: [specific technical recommendation]
-
-(List each pattern with 3+ bugs that spans 2+ features)
-
-### 💪 Most valuable actions identified
-
-- [ ] **[Fix Type]** Action description (addresses X bugs from Categories Y, Z)
-    - Why: [1-sentence justification]
-- [ ] **[Fix Type]** Action description (addresses X bugs)
-- [ ] **[Fix Type]** Action description (addresses X bugs)
-- [ ] **[Fix Type]** Action description (addresses X bugs)
-- [ ] **[Fix Type]** Action description (addresses X bugs)
-
-### Verification
-
-**Bug counts:**
-- Workflow: X
-- Vendor Onboarding: X
-- (all categories matching ### headers above)
-- **Total: {len(resolved_analyses)}**{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}
-
-**Cross-cutting patterns:** [list each with feature span]
-
-✅ Sum = {len(resolved_analyses)}, no double-counting{f" (pending bugs excluded)" if pending_bugs else ""}
+Omit empty categories. Total bug count must equal {len(resolved_analyses)}.
 </output_format>
 
 <fix_types>
-Fix types describe WHAT ACTION TO TAKE (future), distinct from resolution categories (what happened).
-
-Choose the most SPECIFIC action that applies:
-- [Validation] - Add input validation or business rule checks (specific code change)
+Fix types describe WHAT ACTION TO TAKE. Choose the most specific:
+- [Validation] - Add input validation or business rule checks
 - [Error message] - Improve error text to help users self-resolve
 - [Audit] - Add monitoring/logging to detect issues earlier
-- [Documentation] - Update docs or create Dust agent for guidance
+- [Documentation] - Update docs or create guidance
 - [Product] - UX/workflow improvement to prevent user confusion
 - [Super Admin] - Add admin tooling for Ops to fix data issues
-- [Code] - General code change (use only when no specific tag above fits)
-
-Priority: Use [Validation], [Error message], [Audit], [Documentation], [Product], or [Super Admin] when applicable. Reserve [Code] for changes that don't fit other categories (refactoring, architecture, new features).
+- [Code] - General code change (use only when no specific tag fits)
 </fix_types>
 
-Output the categorized analysis now. Use actual bug IDs and brief descriptions from the data above."""
+Output the analysis now. Use actual bug IDs from the data above."""
 
         try:
             print("  🤖 Analyzing patterns with Claude (this may take a minute)...")
