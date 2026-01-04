@@ -51,10 +51,22 @@ When this skill activates:
 4. **Display summary and request confirmation**:
    - Total bugs found in CSV
    - HTML files matched
+   - Bugs with "Pending" status (will be analyzed but excluded from pattern categorization)
    - Estimated time (~3 seconds per bug)
+
+   **If pending bugs detected**, display:
+   ```
+   ⚠️ Excluding N bugs still pending investigation:
+     - PIVOT-XXXXX: [title]
+     - PIVOT-YYYYY: [title]
+   These will not be included in pattern analysis. Re-run after resolution.
+   ```
+
    - **Ask: "Proceed with analysis? (yes/no)"**
    - **STOP and wait for user confirmation**
    - If user declines, abort gracefully
+
+   **Note**: Pending bugs are analyzed individually but excluded from the pattern report since their root causes are not yet determined.
 
 5. **Run the pipeline** (only after confirmation):
    ```bash

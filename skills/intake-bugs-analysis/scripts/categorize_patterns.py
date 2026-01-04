@@ -56,6 +56,7 @@ class PatternAnalyzer:
         code_fixes = 0
         manual_fixes = 0
         not_bugs = 0
+        undocumented = 0
         other = 0
 
         for analysis in analyses:
@@ -66,6 +67,8 @@ class PatternAnalyzer:
                 manual_fixes += 1
             elif "resolution**: not a bug" in content_lower or "resolution: not a bug" in content_lower:
                 not_bugs += 1
+            elif "resolution**: resolution undocumented" in content_lower or "resolution: resolution undocumented" in content_lower:
+                undocumented += 1
             else:
                 other += 1
 
@@ -74,14 +77,29 @@ class PatternAnalyzer:
             "code_fixes": code_fixes,
             "manual_fixes": manual_fixes,
             "not_bugs": not_bugs,
+            "undocumented": undocumented,
             "other": other,
         }
 
     def categorize_with_claude(self, analyses):
         """Use Claude to categorize bugs and identify patterns."""
-        # Prepare condensed data for Claude
-        bug_summaries = []
+        # Separate pending, undocumented, and resolved bugs
+        pending_bugs = []
+        undocumented_bugs = []
+        resolved_analyses = []
+
         for analysis in analyses:
+            content_lower = analysis["content"].lower()
+            if "resolution**: pending" in content_lower or "resolution: pending" in content_lower:
+                pending_bugs.append(analysis["bug_id"])
+            elif "resolution**: resolution undocumented" in content_lower or "resolution: resolution undocumented" in content_lower:
+                undocumented_bugs.append(analysis)  # Keep full analysis for title extraction
+            else:
+                resolved_analyses.append(analysis)
+
+        # Prepare condensed data for Claude (resolved bugs only)
+        bug_summaries = []
+        for analysis in resolved_analyses:
             lines = analysis["content"].split("\n")
             # Extract the key parts (typically first 15-20 lines have the summary)
             summary = "\n".join(lines[:20])
@@ -89,13 +107,54 @@ class PatternAnalyzer:
 
         combined_text = "\n".join(bug_summaries)
 
+        # Build analysis scope section for pending bugs
+        pending_section = ""
+        if pending_bugs:
+            pending_section = f"""<analysis_scope>
+**Excluded from categorization** ({len(pending_bugs)} pending bugs):
+{', '.join(pending_bugs)}
+
+These bugs are still under investigation. They have individual analyses but are excluded from pattern categorization since root causes are not yet determined.
+</analysis_scope>
+
+"""
+
+        # Build manual review section for undocumented bugs
+        undocumented_section = ""
+        if undocumented_bugs:
+            # Extract title from first line of each analysis (format: "## [PIVOT-ID](url): Title")
+            def extract_title(content):
+                first_line = content.split("\n")[0]
+                if ":" in first_line:
+                    return first_line.split(":", 1)[1].strip()
+                return "Unknown"
+
+            bug_list = "\n".join([f"- {b['bug_id']}: {extract_title(b['content'])}" for b in undocumented_bugs])
+            undocumented_section = f"""<manual_review_required>
+**{len(undocumented_bugs)} bug(s) closed without documented resolution:**
+{bug_list}
+
+These should be manually reviewed to understand why due process was not followed.
+</manual_review_required>
+
+"""
+
         # Document Positioning: Data first, instructions last
         # Hybrid approach: Feature area PRIMARY (Ops-readable) + Root cause SECONDARY (cross-cutting patterns)
-        prompt = f"""<bug_analyses>
+        prompt = f"""You are a technical lead analyzing bug trends to inform quarterly planning and reduce operational toil. Your goal is to identify patterns that, if addressed, would prevent multiple future bugs.
+
+{pending_section}{undocumented_section}<bug_analyses>
 {combined_text}
 </bug_analyses>
 
-You have {len(analyses)} bug analyses above. Categorize using a HYBRID approach.
+<re_reading_instruction>
+Read through each bug analysis again, noting recurring themes across feature areas. Pay attention to:
+- Similar error patterns appearing in different features
+- Common root cause types (validation, timing, configuration)
+- Bugs that might share an underlying systemic issue
+</re_reading_instruction>
+
+You have {len(resolved_analyses)} resolved bug analyses above{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}{f" (excludes {len(undocumented_bugs)} requiring manual review)" if undocumented_bugs else ""}. Categorize using a HYBRID approach.
 
 <step_1_feature_area>
 Scan all bugs and categorize each by PRIMARY feature area:
@@ -125,6 +184,20 @@ Group bugs into MUTUALLY EXCLUSIVE feature categories:
 - When a bug touches multiple areas, assign to PRIMARY feature where fix belongs
 - Merge small categories (<2 bugs) into related ones
 </step_3_categorize>
+
+<inline_verification>
+Before outputting, verify your categorization:
+1. Count bugs in each category
+2. Sum all category counts
+3. Compare to total resolved bugs ({len(resolved_analyses)})
+
+If sum != {len(resolved_analyses)}:
+- Check for missed bugs (search for any PIVOT-ID not assigned)
+- Check for duplicates (any PIVOT-ID appearing twice)
+- Fix before outputting
+
+This verification MUST pass. Do not output until sum equals total.
+</inline_verification>
 
 <example type="wrong">
 Output shows only root-cause categories:
@@ -193,22 +266,26 @@ Root causes spanning multiple feature areas:
 - Workflow: X
 - Vendor Onboarding: X
 - (all categories matching ### headers above)
-- **Total: {len(analyses)}**
+- **Total: {len(resolved_analyses)}**{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}
 
 **Cross-cutting patterns:** [list each with feature span]
 
-✅ Sum = {len(analyses)}, no double-counting
+✅ Sum = {len(resolved_analyses)}, no double-counting{f" (pending bugs excluded)" if pending_bugs else ""}
 </output_format>
 
 <fix_types>
-Use these fix type tags:
-- [Audit] - Add audit logs or monitoring
-- [Product] - Product/UX improvement
-- [Documentation] - Docs or Dust agent
-- [Error message] - Better error handling
-- [Super Admin] - Super Admin tooling
-- [Code] - Code fix required
-- [Validation] - Add validation checks
+Fix types describe WHAT ACTION TO TAKE (future), distinct from resolution categories (what happened).
+
+Choose the most SPECIFIC action that applies:
+- [Validation] - Add input validation or business rule checks (specific code change)
+- [Error message] - Improve error text to help users self-resolve
+- [Audit] - Add monitoring/logging to detect issues earlier
+- [Documentation] - Update docs or create Dust agent for guidance
+- [Product] - UX/workflow improvement to prevent user confusion
+- [Super Admin] - Add admin tooling for Ops to fix data issues
+- [Code] - General code change (use only when no specific tag above fits)
+
+Priority: Use [Validation], [Error message], [Audit], [Documentation], [Product], or [Super Admin] when applicable. Reserve [Code] for changes that don't fit other categories (refactoring, architecture, new features).
 </fix_types>
 
 Output the categorized analysis now. Use actual bug IDs and brief descriptions from the data above."""
@@ -257,10 +334,13 @@ Output the categorized analysis now. Use actual bug IDs and brief descriptions f
         code_pct = stats['code_fixes'] * 100 // stats['total'] if stats['total'] > 0 else 0
         manual_pct = stats['manual_fixes'] * 100 // stats['total'] if stats['total'] > 0 else 0
         not_bug_pct = stats['not_bugs'] * 100 // stats['total'] if stats['total'] > 0 else 0
+        undoc_pct = stats.get('undocumented', 0) * 100 // stats['total'] if stats['total'] > 0 else 0
 
         report.append(f"- **Code fixes required**: {stats['code_fixes']} ({code_pct}%)")
         report.append(f"- **Manual fixes**: {stats['manual_fixes']} ({manual_pct}%)")
         report.append(f"- **Not bugs**: {stats['not_bugs']} ({not_bug_pct}%)")
+        if stats.get('undocumented', 0) > 0:
+            report.append(f"- **Resolution undocumented**: {stats['undocumented']} ({undoc_pct}%) - requires manual review")
         if stats['other'] > 0:
             report.append(f"- **Other/Pending**: {stats['other']}")
         report.append("")

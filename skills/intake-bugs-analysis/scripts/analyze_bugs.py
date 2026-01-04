@@ -70,15 +70,23 @@ class BugAnalyzer:
                     status = status_td.get_text(strip=True)
                     break
 
-        # Extract PR link
+        # Extract PR link or reference
         pr_link = None
+        pr_reference = None
         for th in soup.find_all("th"):
-            if "Pull Request" in th.get_text():
+            header_text = th.get_text()
+            if "Pull Request" in header_text or "Github" in header_text:
                 pr_td = th.find_next("td")
                 if pr_td:
+                    # Try to find a link first
                     pr_a = pr_td.find("a")
                     if pr_a and pr_a.get("href"):
                         pr_link = pr_a.get("href")
+                        break
+                    # Fallback: extract plain text (branch name)
+                    text = pr_td.get_text(strip=True)
+                    if text and text.lower() not in ("none", "n/a", "-", ""):
+                        pr_reference = text
                         break
 
         # Extract comments
@@ -126,6 +134,7 @@ class BugAnalyzer:
         return {
             "status": status,
             "pr_link": pr_link,
+            "pr_reference": pr_reference,
             "tech_investigation": tech_investigation,
             "bug_description": bug_description,
             "comments": comments,
@@ -133,25 +142,43 @@ class BugAnalyzer:
 
     def analyze_with_claude(self, bug_id, bug_title, data, pr_meta):
         """Use Claude CLI to generate bug summary."""
+        # Determine availability of optional fields
+        has_description = bool(data["bug_description"])
+        has_tech_investigation = bool(data["tech_investigation"])
+        has_comments = bool(data["comments"])
+        has_pr = bool(pr_meta)
+        has_pr_reference = bool(data.get("pr_reference"))
+
         # Document Positioning: Data first, instructions last
-        prompt = f"""<bug_data>
-Bug ID: {bug_id}
-Title: {bug_title}
-Status: {data["status"]}
-PR Link: {data["pr_link"] if data["pr_link"] else "None"}
+        prompt = f"""You are a senior software engineer performing bug triage for a B2B SaaS procurement platform. Your task is to analyze bug reports and provide structured root cause analysis.
 
-Bug Description:
-{data["bug_description"] if data["bug_description"] else "Not provided"}
+<bug_data>
+<bug_id>{bug_id}</bug_id>
+<title>{bug_title}</title>
+<status>{data["status"]}</status>
+<pr_link>{data["pr_link"] if data["pr_link"] else "None"}</pr_link>
+<pr_reference>{data["pr_reference"] if data["pr_reference"] else "None"}</pr_reference>
 
-Tech Investigation:
-{data["tech_investigation"] if data["tech_investigation"] else "Not provided"}
+<bug_description available="{"yes" if has_description else "no"}">
+{data["bug_description"] if has_description else "Not provided"}
+</bug_description>
 
-Comments:
-{chr(10).join([f"- {c['user']}: {c['text']}" for c in data["comments"]]) if data["comments"] else "No comments"}
+<tech_investigation available="{"yes" if has_tech_investigation else "no"}">
+{data["tech_investigation"] if has_tech_investigation else "Not provided"}
+</tech_investigation>
 
-PR Metadata:
-{f"Title: {pr_meta['title']}, State: {pr_meta['state']}, Changes: +{pr_meta['additions']}/-{pr_meta['deletions']}, Review: {pr_meta.get('reviewDecision', 'PENDING')}" if pr_meta else "No PR linked"}
+<comments available="{"yes" if has_comments else "no"}">
+{chr(10).join([f"- {c['user']}: {c['text']}" for c in data["comments"]]) if has_comments else "No comments"}
+</comments>
+
+<pr_metadata available="{"yes" if has_pr else ("partial" if has_pr_reference else "no")}">
+{f"Title: {pr_meta['title']}, State: {pr_meta['state']}, Changes: +{pr_meta['additions']}/-{pr_meta['deletions']}, Review: {pr_meta.get('reviewDecision', 'PENDING')}" if has_pr else (f"Branch reference: {data['pr_reference']} (code fix exists)" if has_pr_reference else "No PR linked")}
+</pr_metadata>
 </bug_data>
+
+<data_handling>
+When fields are marked available="no", base analysis on remaining data. Do not invent missing information.
+</data_handling>
 
 Analyze the bug above and provide a concise summary.
 
@@ -165,21 +192,48 @@ Analyze the bug above and provide a concise summary.
 **Resolution**: [Category] - [brief explanation]
 </format>
 
-Key Findings: Include 2-5 findings based on complexity.
+Key Findings: 2-5 bullet points, each under 15 words. Focus on facts, not interpretation.
 
-Resolution categories:
-- Code fix: Required code changes (new feature, bug fix, validation)
-- Manual fix: Ops resolved without code (data correction, config change)
-- Not a bug: Working as intended, user error, or duplicate
-- Pending: Still under investigation or blocked
+<resolution_decision_tree>
+Determine resolution by checking Status FIRST, then resolution evidence:
+
+IF Status is NOT "Done":
+  → "Pending" - Bug still under investigation. Stop here.
+  (This bug will be excluded from pattern analysis)
+
+IF Status = "Done":
+  Check for resolution evidence (ALL of: PR linked, fix described in comments, OR clear conclusion in investigation):
+
+  - Evidence shows code was deployed → "Code fix" - [describe the code change]
+  - Evidence shows Ops fixed without code (data correction, config change, user guidance) → "Manual fix" - [describe the manual resolution]
+  - Evidence shows not a bug (working as intended, user error, duplicate, cannot reproduce) → "Not a bug" - [explain why]
+  - NO evidence of how it was resolved (no PR AND no fix in comments AND investigation incomplete) → "Resolution Undocumented" - [note what's missing]
+  (This bug requires manual review)
+
+Use the FIRST matching category.
+</resolution_decision_tree>
+
+<ambiguity_handling>
+SCOPE: This section applies to ambiguous ROOT CAUSES within a known resolution category.
+
+For bugs where resolution IS known (Code fix, Manual fix, Not a bug) but root cause is unclear:
+- Use pattern: "Insufficient data - [best hypothesis based on available evidence]"
+- State what evidence supports the hypothesis
+- Note what additional information would confirm the root cause
+
+IMPORTANT: This does NOT apply when the RESOLUTION ITSELF is unknown.
+If Status=Done but no resolution evidence exists → use "Resolution Undocumented" instead.
+
+Do NOT fabricate details. It is acceptable to acknowledge uncertainty.
+</ambiguity_handling>
 
 <example type="good">
 **Root Cause**: PATCH endpoint missing uniqueness validation that POST endpoint had, allowing duplicate VAT numbers on update.
 
 **Key Findings**:
-- Validation existed on creation but not on updates
+- Validation existed on creation but not updates
 - 3 vendors affected with duplicate VAT numbers
-- No regression - validation was never implemented for PATCH
+- No regression - never implemented for PATCH
 
 **Resolution**: Code fix - Added VAT uniqueness validation to PATCH endpoint
 </example>
@@ -193,6 +247,18 @@ Resolution categories:
 - Users were affected
 
 **Resolution**: Other - Fixed it
+</example>
+
+<example type="pending_vs_undocumented">
+Same bug data, different Status:
+
+Status: In Progress, No PR, Investigation incomplete
+→ **Resolution**: Pending - Investigation ongoing
+
+Status: Done, No PR, Investigation incomplete
+→ **Resolution**: Resolution Undocumented - Closed without fix evidence
+
+Key difference: "Pending" = ticket still open. "Resolution Undocumented" = ticket closed but process gap.
 </example>
 
 Output ONLY the formatted summary. No preamble, no explanation."""
@@ -270,6 +336,8 @@ Output ONLY the formatted summary. No preamble, no explanation."""
             if data["pr_link"]:
                 pr_number = data['pr_link'].split('/')[-1]
                 f.write(f"**PR**: [#{pr_number}]({data['pr_link']})\n")
+            elif data.get("pr_reference"):
+                f.write(f"**PR Reference**: {data['pr_reference']}\n")
             f.write("\n---\n")
 
         print(f"✅ [{index + 1}/{total}] {bug_id}: Done")
