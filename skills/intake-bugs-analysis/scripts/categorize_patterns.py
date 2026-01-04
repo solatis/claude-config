@@ -7,10 +7,22 @@ recurring patterns, categorize bugs, and generate actionable recommendations.
 """
 
 import argparse
+import re
 import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
+
+NOTION_DB_URL = "https://www.notion.so/pivotapp/1491a2c7a2088047aaa6ec67f005a0db"
+
+
+def add_notion_links(text):
+    """Replace PIVOT-##### patterns with Notion search hyperlinks."""
+    return re.sub(
+        r'\b(PIVOT-\d+)\b',
+        lambda m: f"[{m.group(1)}]({NOTION_DB_URL}?q={m.group(1)})",
+        text
+    )
 
 
 class PatternAnalyzer:
@@ -262,7 +274,7 @@ Output the categorized analysis now. Use actual bug IDs and brief descriptions f
 
         # Claude's hybrid pattern analysis (no separator - keeps toggle-friendly)
         if pattern_analysis:
-            report.append(pattern_analysis)
+            report.append(add_notion_links(pattern_analysis))
             report.append("")
         else:
             report.append("## Pattern Analysis\n")

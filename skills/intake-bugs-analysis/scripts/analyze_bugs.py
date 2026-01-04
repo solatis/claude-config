@@ -19,6 +19,32 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+NOTION_DB_URL = "https://www.notion.so/pivotapp/1491a2c7a2088047aaa6ec67f005a0db"
+
+
+def fetch_pr_metadata(pr_url):
+    """Fetch PR metadata using gh CLI."""
+    if not pr_url:
+        return None
+
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "view", pr_url, "--json", "title,state,additions,deletions,reviewDecision"],
+            timeout=10,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            return json.loads(result.stdout)
+        return None
+    except Exception:
+        return None
+
+
+def notion_link(bug_id):
+    """Format bug ID as Notion search hyperlink."""
+    return f"[{bug_id}]({NOTION_DB_URL}?q={bug_id})"
+
 
 class BugAnalyzer:
     def __init__(self, csv_path, html_dir, output_dir, claude_timeout=60, workers=4):
@@ -105,7 +131,7 @@ class BugAnalyzer:
             "comments": comments,
         }
 
-    def analyze_with_claude(self, bug_id, bug_title, data):
+    def analyze_with_claude(self, bug_id, bug_title, data, pr_meta):
         """Use Claude CLI to generate bug summary."""
         # Document Positioning: Data first, instructions last
         prompt = f"""<bug_data>
@@ -122,6 +148,9 @@ Tech Investigation:
 
 Comments:
 {chr(10).join([f"- {c['user']}: {c['text']}" for c in data["comments"]]) if data["comments"] else "No comments"}
+
+PR Metadata:
+{f"Title: {pr_meta['title']}, State: {pr_meta['state']}, Changes: +{pr_meta['additions']}/-{pr_meta['deletions']}, Review: {pr_meta.get('reviewDecision', 'PENDING')}" if pr_meta else "No PR linked"}
 </bug_data>
 
 Analyze the bug above and provide a concise summary.
@@ -222,8 +251,11 @@ Output ONLY the formatted summary. No preamble, no explanation."""
             print(f"❌ [{index + 1}/{total}] {bug_id}: Extract error - {e}")
             return False
 
+        # Fetch PR metadata
+        pr_meta = fetch_pr_metadata(data.get("pr_link"))
+
         # Analyze with Claude
-        summary = self.analyze_with_claude(bug_id, bug_title, data)
+        summary = self.analyze_with_claude(bug_id, bug_title, data, pr_meta)
 
         if summary.startswith("Error"):
             print(f"❌ [{index + 1}/{total}] {bug_id}: {summary}")
@@ -232,11 +264,12 @@ Output ONLY the formatted summary. No preamble, no explanation."""
         # Save result
         output_file = self.output_dir / f"{bug_id}.md"
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write(f"## {bug_id}: {bug_title}\n\n")
+            f.write(f"## {notion_link(bug_id)}: {bug_title}\n\n")
             f.write(f"{summary}\n\n")
             f.write(f"**Status**: {data['status']}\n")
             if data["pr_link"]:
-                f.write(f"**PR**: {data['pr_link']}\n")
+                pr_number = data['pr_link'].split('/')[-1]
+                f.write(f"**PR**: [#{pr_number}]({data['pr_link']})\n")
             f.write("\n---\n")
 
         print(f"✅ [{index + 1}/{total}] {bug_id}: Done")

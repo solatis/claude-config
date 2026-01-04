@@ -30,7 +30,16 @@ When this skill activates:
 1. **Verify prerequisites exist**:
    - Check `inputs/exports/` contains HTML files
    - Check `inputs/bug_list.csv` exists
-   - If missing, see `resources/troubleshooting.md`
+
+   **If files are missing, STOP.** Do NOT:
+   - Search for files in Downloads or other directories
+   - Extract or unzip any archive files
+   - Copy files from the exports folder to create bug_list.csv
+   - Create or generate any input files
+
+   Instead, IMMEDIATELY use AskUserQuestion to ask the user to provide the missing files.
+   Tell them to see `resources/troubleshooting.md` for instructions on how to export from Notion.
+   Wait for the user to confirm files are in place before proceeding.
 
 2. **Ask the user for the analysis period**:
    - `December 2025` (month + year)
