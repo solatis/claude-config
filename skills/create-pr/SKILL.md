@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Use for PR creation.
+description: Invoke IMMEDIATELY when user requests PR creation, opening a pull request, making a PR, submitting changes for review, or pushing and creating a PR. Use for ANY pull request workflow.
 ---
 
 You are creating a pull request that follows repository conventions.
@@ -61,13 +61,24 @@ If a plan file exists, embed it:
 
 ## Step 5: Create PR
 
-Default to `--draft`. Only omit the flag if user explicitly requested the PR be ready for review.
+Use the GitHub API to create the PR (do NOT use `gh pr create` - it may be blocked by hooks):
 
-Draft is safer—reviewers won't merge prematurely.
+```bash
+gh api repos/{owner}/{repo}/pulls -X POST \
+  -f title="[TICKET-ID] Title" \
+  -f head="{branch}" \
+  -f base="main" \
+  -f draft=true \
+  -f body="$(cat /tmp/pr-body.md)"
+```
+
+Write the PR body to `/tmp/pr-body.md` first, then use the command above.
+
+Default to `draft=true`. Only set `draft=false` if user explicitly requested the PR be ready for review.
 
 ## Error Handling
 
 These errors are expected and recoverable:
-- **GraphQL error on `gh pr edit`**: Use API instead: `gh api repos/{owner}/{repo}/pulls/{number} -X PATCH -f body=@body.md`
+- **PR already exists**: Update via API: `gh api repos/{owner}/{repo}/pulls/{number} -X PATCH -f body="$(cat /tmp/pr-body.md)"`
 - **Branch not pushed**: Run `git push -u origin <branch>`, then retry PR creation
-- **PR already exists**: Use `gh pr edit` to update the existing PR
+- **Hook blocks command**: If you see "SKILL ENFORCED" error, you used a blocked command (`gh pr create`, `gh pr edit`). Use `gh api` instead.
