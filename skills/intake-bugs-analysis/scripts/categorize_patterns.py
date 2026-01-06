@@ -364,21 +364,21 @@ Fix these issues in your response. Ensure:
                         print(f"  ⚠️  Validation still failed after retry: {'; '.join(retry_errors)}")
                         # Continue with output anyway
 
-            return output
+            return output, undocumented_bugs
 
         except subprocess.TimeoutExpired:
             print("  ❌ Error: Claude CLI timed out")
-            return None
+            return None, undocumented_bugs
         except FileNotFoundError:
             print(
                 "  ❌ Error: Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
             )
-            return None
+            return None, undocumented_bugs
         except Exception as e:
             print(f"  ❌ Error: {str(e)}")
-            return None
+            return None, undocumented_bugs
 
-    def generate_report(self, analyses, stats, pattern_analysis):
+    def generate_report(self, analyses, stats, pattern_analysis, undocumented_bugs=None):
         """Generate Notion-ready report in Bugs Initiative format."""
         report = []
 
@@ -402,6 +402,21 @@ Fix these issues in your response. Ensure:
         report.append(f"- **Not bugs**: {stats['not_bugs']} ({not_bug_pct}%)")
         if stats.get('undocumented', 0) > 0:
             report.append(f"- **Resolution undocumented**: {stats['undocumented']} ({undoc_pct}%) - requires manual review")
+            # List the specific undocumented bugs
+            if undocumented_bugs:
+                def extract_title(content):
+                    # Format: "## [PIVOT-ID](url): Title"
+                    first_line = content.split("\n")[0]
+                    # Find the last ): which ends the markdown link, then get title after it
+                    if "):" in first_line:
+                        return first_line.split("):", 1)[1].strip()
+                    return "Unknown"
+                report.append("")
+                report.append("  **Requires manual review:**")
+                for bug in undocumented_bugs:
+                    bug_id = bug['bug_id']
+                    title = extract_title(bug['content'])
+                    report.append(f"  - [{bug_id}]({NOTION_DB_URL}?q={bug_id}): {title}")
         if stats['other'] > 0:
             report.append(f"- **Other/Pending**: {stats['other']}")
         report.append("")
@@ -455,11 +470,11 @@ Fix these issues in your response. Ensure:
 
         # Categorize with Claude
         print("\n🔍 Identifying patterns...")
-        pattern_analysis = self.categorize_with_claude(analyses)
+        pattern_analysis, undocumented_bugs = self.categorize_with_claude(analyses)
 
         # Generate report
         print("\n📝 Generating report...")
-        report = self.generate_report(analyses, stats, pattern_analysis)
+        report = self.generate_report(analyses, stats, pattern_analysis, undocumented_bugs)
 
         # Save report
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
