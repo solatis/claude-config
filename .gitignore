@@ -6,6 +6,8 @@
 !agents/**
 !commands/
 !commands/**
+!hooks/
+!hooks/**
 !skills/
 !skills/**
 !output-styles/
