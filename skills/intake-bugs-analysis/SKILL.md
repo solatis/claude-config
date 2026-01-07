@@ -73,12 +73,8 @@ When this skill activates:
    python3 ~/.claude/skills/intake-bugs-analysis/scripts/run_full_analysis.py --period "{period}" --timeout 120
    ```
 
-6. **Generate Notion output**:
-   - Read `outputs/summary/pattern_analysis.md` for analysis results
-   - Read `NOTION_OUTPUT_TEMPLATE.md` for output structure
-   - Fill placeholders using data from pattern analysis
-   - Save to `NOTION_COMPARISON.md`
-   - Display executive summary and top 3 patterns to user
+6. **Display results**:
+   - Display executive summary and top patterns from `outputs/summary/pattern_analysis.md`
 
 ## Workflow
 
@@ -96,7 +92,6 @@ Auto-resume: Skips already-analyzed bugs on re-run.
 |------|----------|
 | `outputs/individual/PIVOT-{ID}.md` | Per-bug analysis (root cause, findings, resolution) |
 | `outputs/summary/pattern_analysis.md` | Categories, priorities, insights |
-| `NOTION_COMPARISON.md` | Notion-ready report |
 
 ## Resources
 

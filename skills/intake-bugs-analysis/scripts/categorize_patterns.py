@@ -12,17 +12,7 @@ import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
-
-NOTION_DB_URL = "https://www.notion.so/pivotapp/1491a2c7a2088047aaa6ec67f005a0db"
-
-
-def add_notion_links(text):
-    """Replace PIVOT-##### patterns with Notion search hyperlinks."""
-    return re.sub(
-        r'\b(PIVOT-\d+)\b',
-        lambda m: f"[{m.group(1)}]({NOTION_DB_URL}?q={m.group(1)})",
-        text
-    )
+from shared import NOTION_DB_URL, add_notion_links, extract_bug_title, has_resolution, filter_analyses_by_status
 
 
 def validate_output(text, expected_count):
@@ -116,14 +106,13 @@ class PatternAnalyzer:
         other = 0
 
         for analysis in analyses:
-            content_lower = analysis["content"].lower()
-            if "resolution**: code fix" in content_lower or "resolution: code fix" in content_lower:
+            if has_resolution(analysis["content"], "code fix"):
                 code_fixes += 1
-            elif "resolution**: manual fix" in content_lower or "resolution: manual fix" in content_lower:
+            elif has_resolution(analysis["content"], "manual fix"):
                 manual_fixes += 1
-            elif "resolution**: not a bug" in content_lower or "resolution: not a bug" in content_lower:
+            elif has_resolution(analysis["content"], "not a bug"):
                 not_bugs += 1
-            elif "resolution**: resolution undocumented" in content_lower or "resolution: resolution undocumented" in content_lower:
+            elif has_resolution(analysis["content"], "resolution undocumented"):
                 undocumented += 1
             else:
                 other += 1
@@ -140,18 +129,7 @@ class PatternAnalyzer:
     def categorize_with_claude(self, analyses):
         """Use Claude to categorize bugs and identify patterns."""
         # Separate pending, undocumented, and resolved bugs
-        pending_bugs = []
-        undocumented_bugs = []
-        resolved_analyses = []
-
-        for analysis in analyses:
-            content_lower = analysis["content"].lower()
-            if "resolution**: pending" in content_lower or "resolution: pending" in content_lower:
-                pending_bugs.append(analysis["bug_id"])
-            elif "resolution**: resolution undocumented" in content_lower or "resolution: resolution undocumented" in content_lower:
-                undocumented_bugs.append(analysis)  # Keep full analysis for title extraction
-            else:
-                resolved_analyses.append(analysis)
+        pending_bug_ids, undocumented_bugs, resolved_analyses = filter_analyses_by_status(analyses)
 
         # Prepare condensed data for Claude (resolved bugs only)
         bug_summaries = []
@@ -165,10 +143,10 @@ class PatternAnalyzer:
 
         # Build analysis scope section for pending bugs
         pending_section = ""
-        if pending_bugs:
+        if pending_bug_ids:
             pending_section = f"""<analysis_scope>
-**Excluded from categorization** ({len(pending_bugs)} pending bugs):
-{', '.join(pending_bugs)}
+**Excluded from categorization** ({len(pending_bug_ids)} pending bugs):
+{', '.join(pending_bug_ids)}
 
 These bugs are still under investigation. They have individual analyses but are excluded from pattern categorization since root causes are not yet determined.
 </analysis_scope>
@@ -178,14 +156,7 @@ These bugs are still under investigation. They have individual analyses but are 
         # Build manual review section for undocumented bugs
         undocumented_section = ""
         if undocumented_bugs:
-            # Extract title from first line of each analysis (format: "## [PIVOT-ID](url): Title")
-            def extract_title(content):
-                first_line = content.split("\n")[0]
-                if ":" in first_line:
-                    return first_line.split(":", 1)[1].strip()
-                return "Unknown"
-
-            bug_list = "\n".join([f"- {b['bug_id']}: {extract_title(b['content'])}" for b in undocumented_bugs])
+            bug_list = "\n".join([f"- {b['bug_id']}: {extract_bug_title(b['content'])}" for b in undocumented_bugs])
             undocumented_section = f"""<manual_review_required>
 **{len(undocumented_bugs)} bug(s) closed without documented resolution:**
 {bug_list}
@@ -203,7 +174,7 @@ These should be manually reviewed to understand why due process was not followed
 {combined_text}
 </bug_analyses>
 
-You have {len(resolved_analyses)} resolved bug analyses above{f" (excludes {len(pending_bugs)} pending)" if pending_bugs else ""}{f" (excludes {len(undocumented_bugs)} requiring manual review)" if undocumented_bugs else ""}.
+You have {len(resolved_analyses)} resolved bug analyses above{f" (excludes {len(pending_bug_ids)} pending)" if pending_bug_ids else ""}{f" (excludes {len(undocumented_bugs)} requiring manual review)" if undocumented_bugs else ""}.
 
 <internal_analysis>
 Silently perform these steps. Do NOT output this analysis.
@@ -223,9 +194,9 @@ Silently perform these steps. Do NOT output this analysis.
 
 <verification_checkpoint>
 Before outputting, verify these invariants:
-1. CROSS-REFERENCE: Every PIVOT-ID in "Most Valuable Actions" appears in "Bug Index"
-2. NO DUPLICATES: Each PIVOT-ID appears in exactly ONE Bug Index category
-3. COUNT CHECK: Sum of bugs across all categories equals {len(resolved_analyses)}
+1. CROSS-REFERENCE: List any PIVOT-IDs from "Most Valuable Actions" missing from "Bug Index"
+2. NO DUPLICATES: List any PIVOT-IDs appearing in multiple Bug Index categories
+3. COUNT CHECK: Count bugs in Bug Index. Expected: {len(resolved_analyses)}
 
 If any check fails:
 - Cross-reference fail: Add missing bug to appropriate Bug Index category
@@ -404,18 +375,11 @@ Fix these issues in your response. Ensure:
             report.append(f"- **Resolution undocumented**: {stats['undocumented']} ({undoc_pct}%) - requires manual review")
             # List the specific undocumented bugs
             if undocumented_bugs:
-                def extract_title(content):
-                    # Format: "## [PIVOT-ID](url): Title"
-                    first_line = content.split("\n")[0]
-                    # Find the last ): which ends the markdown link, then get title after it
-                    if "):" in first_line:
-                        return first_line.split("):", 1)[1].strip()
-                    return "Unknown"
                 report.append("")
                 report.append("  **Requires manual review:**")
                 for bug in undocumented_bugs:
                     bug_id = bug['bug_id']
-                    title = extract_title(bug['content'])
+                    title = extract_bug_title(bug['content'])
                     report.append(f"  - [{bug_id}]({NOTION_DB_URL}?q={bug_id}): {title}")
         if stats['other'] > 0:
             report.append(f"- **Other/Pending**: {stats['other']}")

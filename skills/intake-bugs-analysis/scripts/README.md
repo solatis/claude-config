@@ -44,6 +44,21 @@ Four-stage pipeline that transforms Notion bug exports into pattern-based analys
 - No API key management needed
 - Consistent with skill environment philosophy
 
+## Shared Module
+
+**Why shared.py exists:**
+The `shared.py` module consolidates bug analysis utilities used by both `analyze_bugs.py` and `categorize_patterns.py`. This grouping reflects the shared domain concept of "bug analysis utilities" rather than generic helpers.
+
+**What it provides:**
+- Resolution detection with dual-format handling (bold/non-bold markdown)
+- Bug title parsing using "):" delimiter
+- Notion link generation and markdown injection
+- Analysis filtering by status (pending/undocumented/resolved)
+
+**Design tradeoffs:**
+- **Duplication removed vs indirection added**: Eliminates 8 duplicated resolution checks, at cost of import statement in each script
+- **Single file vs granular modules**: Simpler imports for 4-script skill; acceptable growth risk given skill scope
+
 ## Invariants
 
 - **Matching before analysis**: `analyze_bugs.py` expects `bug_list_matched.csv` to exist

@@ -18,8 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-
-NOTION_DB_URL = "https://www.notion.so/pivotapp/1491a2c7a2088047aaa6ec67f005a0db"
+from shared import NOTION_DB_URL, notion_link
 
 
 def fetch_pr_metadata(pr_url):
@@ -39,11 +38,6 @@ def fetch_pr_metadata(pr_url):
         return None
     except Exception:
         return None
-
-
-def notion_link(bug_id):
-    """Format bug ID as Notion search hyperlink."""
-    return f"[{bug_id}]({NOTION_DB_URL}?q={bug_id})"
 
 
 class BugAnalyzer:
