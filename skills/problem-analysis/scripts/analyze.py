@@ -55,6 +55,7 @@ STEPS = {
             "  - What would a different domain do?",
             "  - What's the 80/20 'good enough' option?",
             "  - What if we did NOTHING?",
+            "  - If inferring from code: Search broadly, identify the dominant pattern",
             "",
             "ADD 1-2 more solutions covering unexplored axes.",
             "",
