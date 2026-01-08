@@ -466,10 +466,11 @@ def get_step_guidance(step: int, total_steps: int,
             "After fixing, proceed to QR-Completeness for fresh verification.",
         ]
         # After fix, proceed to step 6 (QR-Completeness) for fresh review
+        # Increment iteration so gate severity filtering progresses
         return {
             "title": f"{info['title']} - Fix Mode",
             "actions": fix_actions,
-            "next": f"python3 planner.py --step 6 --total-steps {total_steps}",
+            "next": f"python3 planner.py --step 6 --total-steps {total_steps} --qr-iteration {qr.iteration + 1}",
         }
 
     # Add QR banner for QR steps
