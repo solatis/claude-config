@@ -35,7 +35,7 @@ from skills.lib.workflow.formatters import (
     format_qr_banner,
 )
 from skills.lib.workflow.cli import add_qr_args
-from skills.planner.shared.resources import get_mode_script_path
+from skills.planner.shared.resources import get_mode_script_path, get_resource
 
 
 # Module path for -m invocation
@@ -154,8 +154,7 @@ If any step was skipped: STOP. Go back and complete it.
 
 def get_plan_format() -> str:
     """Read the plan format template from resources."""
-    format_path = Path(__file__).parent.parent / "resources" / "plan-format.md"
-    return format_path.read_text()
+    return get_resource("plan-format.md")
 
 
 # Unified step definitions (1-13)
