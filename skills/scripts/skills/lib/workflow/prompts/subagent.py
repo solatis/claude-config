@@ -43,8 +43,7 @@ MANDATORY INVOKE BLOCK - Copy VERBATIM into the agent's prompt:
 FIRST ACTION REQUIRED: Run this command via Bash tool before any other response.
 Do NOT skip. Do NOT produce analysis first. Execute this command IMMEDIATELY.
 
-Working directory: {working_dir}
-Command: {cmd}
+Command: cd {working_dir} && {cmd}
 ================================================================================
 CRITICAL: Copy the block above EXACTLY. Do not paraphrase or summarize.
 The subagent needs "FIRST ACTION REQUIRED" to know it must run the command."""

@@ -35,8 +35,8 @@ def format_step(body: str, next_cmd: str = "", title: str = "",
         invoke = (
             f"NEXT STEP (MANDATORY -- execute exactly one):\n"
             f"    Working directory: {SKILLS_DIR}\n"
-            f"    ALL agents returned PASS  ->  {if_pass}\n"
-            f"    ANY agent returned FAIL   ->  {if_fail}\n\n"
+            f"    ALL agents returned PASS  ->  cd {SKILLS_DIR} && {if_pass}\n"
+            f"    ANY agent returned FAIL   ->  cd {SKILLS_DIR} && {if_fail}\n\n"
             f"This is a mechanical routing decision. Do not interpret, summarize, "
             f"or assess the results.\n"
             f"Count PASS vs FAIL, then execute the matching command."
@@ -45,11 +45,11 @@ def format_step(body: str, next_cmd: str = "", title: str = "",
 
     elif next_cmd:
         # Working directory is explicit because CLI execution context varies.
-        # Command is literal shell invocation for next step.
+        # Command is self-contained with cd prefix to avoid working directory issues.
         invoke = (
             f"NEXT STEP:\n"
             f"    Working directory: {SKILLS_DIR}\n"
-            f"    Command: {next_cmd}\n\n"
+            f"    Command: cd {SKILLS_DIR} && {next_cmd}\n\n"
             f"Execute this command now."
         )
         return f"{body}\n\n{invoke}"

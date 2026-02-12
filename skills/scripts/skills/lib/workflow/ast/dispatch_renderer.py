@@ -143,7 +143,7 @@ def render_subagent_dispatch(node: SubagentDispatchNode) -> str:
 
     # Wrap invoke in directive to signal immediate execution
     lines.append('  <directive action="IMMEDIATELY invoke">')
-    lines.append(f'    <invoke working-dir=".claude/skills/scripts" cmd="{node.command}" />')
+    lines.append(f'    <invoke cmd="cd .claude/skills/scripts && {node.command}" />')
     lines.append('  </directive>')
 
     lines.append("</subagent_dispatch>")
@@ -198,7 +198,7 @@ def render_template_dispatch(node: TemplateDispatchNode) -> str:
                 lines.append(f"        {prompt_line}" if prompt_line else "")
             lines.append("      </prompt>")
 
-        lines.append(f'      <invoke working-dir=".claude/skills/scripts" cmd="{e["command"]}" />')
+        lines.append(f'      <invoke cmd="cd .claude/skills/scripts && {e["command"]}" />')
         lines.append("    </agent>")
     lines.append("  </agents>")
 
@@ -257,7 +257,7 @@ def render_roster_dispatch(node: RosterDispatchNode) -> str:
         for task_line in agent_prompt.split("\n"):
             lines.append(f"        {task_line}" if task_line else "")
         lines.append("      </task>")
-        lines.append(f'      <invoke working-dir=".claude/skills/scripts" cmd="{node.command}" />')
+        lines.append(f'      <invoke cmd="cd .claude/skills/scripts && {node.command}" />')
         lines.append("    </agent>")
     lines.append("  </agents>")
 

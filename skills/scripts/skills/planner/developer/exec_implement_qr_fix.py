@@ -28,7 +28,7 @@ STEPS = {
 
 
 def get_step_guidance(
-    step: int) -> dict:
+    step: int, module_path: str = None, **kwargs) -> dict:
     """Return guidance for the given step."""
     MODULE_PATH = module_path or "skills.planner.developer.exec_implement_qr_fix"
     state_dir = kwargs.get("state_dir", "")

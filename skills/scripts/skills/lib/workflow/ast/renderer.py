@@ -85,11 +85,11 @@ class XMLRenderer:
         Renderer assumes valid node, focuses solely on XML generation.
         """
         if node.cmd is not None:
-            invoke = f'<invoke working-dir="{node.working_dir}" cmd="{node.cmd}" />'
+            invoke = f'<invoke cmd="cd {node.working_dir} && {node.cmd}" />'
             return f"<invoke_after>\n{invoke}\n</invoke_after>"
         else:
-            if_pass_invoke = f'<invoke working-dir="{node.working_dir}" cmd="{node.if_pass}" />'
-            if_fail_invoke = f'<invoke working-dir="{node.working_dir}" cmd="{node.if_fail}" />'
+            if_pass_invoke = f'<invoke cmd="cd {node.working_dir} && {node.if_pass}" />'
+            if_fail_invoke = f'<invoke cmd="cd {node.working_dir} && {node.if_fail}" />'
             return f"<invoke_after>\n  <if_pass>\n    {if_pass_invoke}\n  </if_pass>\n  <if_fail>\n    {if_fail_invoke}\n  </if_fail>\n</invoke_after>"
 
     def _render_node(self, node: Node) -> str:
