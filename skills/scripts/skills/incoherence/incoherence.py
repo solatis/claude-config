@@ -183,7 +183,7 @@ CRITICAL: All script outputs use XML format. You MUST:
     parts.append("")
 
     next_text = guidance.get("next", "")
-    if step >= total or "COMPLETE" in next_text.upper():
+    if step >= WORKFLOW.total_steps or next_text.strip().upper() == "WORKFLOW COMPLETE.":
         parts.append("WORKFLOW COMPLETE - Present report to user.")
     else:
         next_cmd = f'python3 -m skills.incoherence.incoherence --step-number {step + 1}'
@@ -647,6 +647,8 @@ def main(
     """
     parser = argparse.ArgumentParser(description="Incoherence Detector")
     parser.add_argument("--step-number", type=int, required=True)
+    parser.add_argument("--thoughts", type=str, default="",
+                        help="Accumulated context from previous steps")
     args = parser.parse_args()
 
     guidance = get_step_guidance(args.step_number, WORKFLOW.total_steps)
