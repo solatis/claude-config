@@ -159,7 +159,7 @@ SELECTION RULES:
 
 
 
-def format_incoherence_output(step, phase, agent_type, guidance):
+def format_incoherence_output(step, phase, agent_type, guidance, thoughts=""):
     """Format output using AST builder API."""
     parts = []
     title = f"INCOHERENCE [{phase}] [{agent_type}]"
@@ -169,6 +169,10 @@ def format_incoherence_output(step, phase, agent_type, guidance):
         step=str(step),
     )))
     parts.append("")
+
+    if thoughts:
+        parts.append(f"<context>\n{thoughts}\n</context>")
+        parts.append("")
 
     if step == 1:
         parts.append("""<xml_format_mandate>
@@ -183,10 +187,15 @@ CRITICAL: All script outputs use XML format. You MUST:
     parts.append("")
 
     next_text = guidance.get("next", "")
-    if step >= WORKFLOW.total_steps or next_text.strip().upper() == "WORKFLOW COMPLETE.":
+    is_workflow_complete = step >= WORKFLOW.total_steps or next_text.strip().upper() == "WORKFLOW COMPLETE."
+    is_subagent_terminal = "SUB-AGENT TASK COMPLETE" in next_text.upper()
+
+    if is_workflow_complete:
         parts.append("WORKFLOW COMPLETE - Present report to user.")
+    elif is_subagent_terminal:
+        parts.append("SUB-AGENT TASK COMPLETE - Return results to parent agent.")
     else:
-        next_cmd = f'python3 -m skills.incoherence.incoherence --step-number {step + 1}'
+        next_cmd = f'python3 -m skills.incoherence.incoherence --step-number {step + 1} --thoughts \\"<ACCUMULATED_CONTEXT>\\"'
         parts.append(render_invoke_after(InvokeAfterNode(cmd=next_cmd)))
 
     return "\n".join(parts)
@@ -676,7 +685,7 @@ def main(
         phase = "APPLICATION"
 
     output = format_incoherence_output(
-        args.step_number, phase, agent_type, guidance
+        args.step_number, phase, agent_type, guidance, thoughts=args.thoughts
     )
     print(output)
 
