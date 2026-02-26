@@ -26,6 +26,7 @@ Options:
                     May be specified multiple times for multi-target install
   --uninstall       Remove all managed files from target
   --dry-run         Preview changes without writing
+  --verbose, -v     Print per-file operations in addition to summary
   --force           Overwrite locally-modified files without backup
   --help, -h        Show this help message
 
@@ -34,6 +35,7 @@ Examples:
   install.sh --tool pi                              # Install/upgrade to ~/.pi/agent
   install.sh --tool claude --target ~/git/repo/.claude  # Project-specific
   install.sh --tool claude --dry-run                # Preview changes
+  install.sh --tool pi --verbose                    # Show all file operations
   install.sh --tool claude --uninstall              # Remove managed files
 EOF
 }
@@ -59,7 +61,7 @@ while [[ $# -gt 0 ]]; do
             UNINSTALL=true
             shift
             ;;
-        --dry-run|--force)
+        --dry-run|--force|--verbose|-v)
             PASSTHROUGH_ARGS+=("$1")
             shift
             ;;

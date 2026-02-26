@@ -146,6 +146,16 @@ def should_exclude(rel_path: str) -> bool:
     return any(name in parts for name in ALWAYS_EXCLUSIONS)
 
 
+def log_file_operation(op: str, path: Path, dry_run: bool, verbose: bool, detail: str | None = None) -> None:
+    """Print a file operation when previewing or in verbose mode."""
+    if not (dry_run or verbose):
+        return
+    if detail:
+        print(f"{op} {path} ({detail})")
+    else:
+        print(f"{op} {path}")
+
+
 def load_manifest(target: Path) -> dict | None:
     """Load existing manifest or return None.
 
@@ -180,7 +190,13 @@ def save_manifest(target: Path, manifest: dict) -> None:
     tmp_path.rename(manifest_path)
 
 
-def install(source: Path, target: Path, dry_run: bool = False, variables: dict = None) -> None:
+def install(
+    source: Path,
+    target: Path,
+    dry_run: bool = False,
+    variables: dict = None,
+    verbose: bool = False,
+) -> None:
     """Fresh install from source to target."""
     if variables is None:
         variables = {}
@@ -204,9 +220,10 @@ def install(source: Path, target: Path, dry_run: bool = False, variables: dict =
         dst_file = target / rel_path
 
         if dry_run:
-            print(f"NEW {dst_file}")
+            log_file_operation("NEW", dst_file, dry_run, verbose)
         else:
             copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
+            log_file_operation("NEW", dst_file, dry_run, verbose)
             manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -218,7 +235,14 @@ def install(source: Path, target: Path, dry_run: bool = False, variables: dict =
         check_dependencies()
 
 
-def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: dict = None) -> None:
+def upgrade(
+    source: Path,
+    target: Path,
+    dry_run: bool,
+    force: bool,
+    variables: dict = None,
+    verbose: bool = False,
+) -> None:
     """Upgrade existing installation."""
     if variables is None:
         variables = {}
@@ -275,7 +299,7 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
             if current_hash != old_hash and not force:
                 conflicts.append(rel_path)
                 if dry_run:
-                    print(f"CONFLICT {dst_file} (would back up)")
+                    log_file_operation("CONFLICT", dst_file, dry_run, verbose, "would back up")
                 else:
                     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
                     backup_path = dst_file.parent / f"{dst_file.name}.bak.{timestamp}"
@@ -283,9 +307,10 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
                     print(f"CONFLICT {dst_file} -> backed up to {backup_path}")
 
         if dry_run:
-            print(f"UPDATE {dst_file}")
+            log_file_operation("UPDATE", dst_file, dry_run, verbose)
         else:
             copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
+            log_file_operation("UPDATE", dst_file, dry_run, verbose)
             new_manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -298,9 +323,10 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
         src_file = source / source_rel_path
         dst_file = target / rel_path
         if dry_run:
-            print(f"NEW {dst_file}")
+            log_file_operation("NEW", dst_file, dry_run, verbose)
         else:
             copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
+            log_file_operation("NEW", dst_file, dry_run, verbose)
             new_manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -314,9 +340,10 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
             expected_hash = old_manifest["files"][rel_path]["sha256"]
             if current_hash == expected_hash or force:
                 if dry_run:
-                    print(f"REMOVE {dst_file}")
+                    log_file_operation("REMOVE", dst_file, dry_run, verbose)
                 else:
                     dst_file.unlink()
+                    log_file_operation("REMOVE", dst_file, dry_run, verbose)
                     cleanup_empty_dirs(dst_file.parent, target)
             else:
                 print(f"SKIP REMOVE {rel_path} (modified)")
@@ -338,7 +365,7 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
             print(f"Conflicts: {len(conflicts)} files backed up")
 
 
-def uninstall(target: Path, dry_run: bool, force: bool) -> None:
+def uninstall(target: Path, dry_run: bool, force: bool, verbose: bool = False) -> None:
     """Remove all managed files."""
     manifest = load_manifest(target)
     if not manifest:
@@ -356,9 +383,10 @@ def uninstall(target: Path, dry_run: bool, force: bool) -> None:
         current_hash = sha256_file(dst_file)
         if current_hash == info["sha256"] or force:
             if dry_run:
-                print(f"REMOVE {dst_file}")
+                log_file_operation("REMOVE", dst_file, dry_run, verbose)
             else:
                 dst_file.unlink()
+                log_file_operation("REMOVE", dst_file, dry_run, verbose)
                 cleanup_empty_dirs(dst_file.parent, target)
             removed += 1
         else:
@@ -407,6 +435,8 @@ def main():
     parser = argparse.ArgumentParser(description="AI coding tool config installer")
     parser.add_argument("command", choices=["install", "upgrade", "uninstall"])
     parser.add_argument("--dry-run", action="store_true", help="Preview without changes")
+    parser.add_argument("--verbose", "-v", action="store_true",
+                        help="Print per-file operations in addition to summary")
     parser.add_argument("--force", action="store_true",
                         help="Overwrite locally-modified files without backup; "
                              "remove orphans even if modified")
@@ -427,11 +457,11 @@ def main():
         sys.exit(1)
 
     if args.command == "install":
-        install(source, args.target, args.dry_run, variables)
+        install(source, args.target, args.dry_run, variables, args.verbose)
     elif args.command == "upgrade":
-        upgrade(source, args.target, args.dry_run, args.force, variables)
+        upgrade(source, args.target, args.dry_run, args.force, variables, args.verbose)
     elif args.command == "uninstall":
-        uninstall(args.target, args.dry_run, args.force)
+        uninstall(args.target, args.dry_run, args.force, args.verbose)
 
 
 if __name__ == "__main__":
