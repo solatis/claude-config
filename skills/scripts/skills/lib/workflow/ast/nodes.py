@@ -11,6 +11,10 @@ skills use W.el("tag_name", ...) pattern exclusively.
 
 from dataclasses import dataclass
 
+from skills.lib.paths import get_skills_working_dir
+
+_SKILLS_DIR = get_skills_working_dir()
+
 __all__ = [
     "TextNode",
     "CodeNode",
@@ -124,7 +128,7 @@ class InvokeAfterNode:
     cmd: str | None = None
     if_pass: str | None = None
     if_fail: str | None = None
-    working_dir: str = ".claude/skills/scripts"
+    working_dir: str = _SKILLS_DIR
 
     def __post_init__(self):
         if self.cmd is None and (self.if_pass is None or self.if_fail is None):

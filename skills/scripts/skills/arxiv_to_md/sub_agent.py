@@ -18,6 +18,7 @@ Arguments:
 import argparse
 import sys
 
+from skills.lib.paths import get_scripts_dir
 from skills.lib.workflow.prompts import format_step
 
 
@@ -95,7 +96,7 @@ PREPROCESS_INSTRUCTIONS = (
     "```bash\n"
     "python3 << 'EOF'\n"
     "import sys\n"
-    "sys.path.insert(0, '/Users/lmergen/.claude/skills/scripts')\n"
+    f"sys.path.insert(0, {str(get_scripts_dir())!r})\n"
     "from skills.arxiv_to_md.tex_utils import preprocess_tex\n"
     "\n"
     "result = preprocess_tex('<source_dir>/<main_tex>')\n"

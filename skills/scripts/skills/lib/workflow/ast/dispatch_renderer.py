@@ -12,11 +12,14 @@ Separate from ast/renderer.py because:
 import re
 from string import Template
 
+from skills.lib.paths import get_skills_working_dir
 from skills.lib.workflow.ast.dispatch import (
     SubagentDispatchNode,
     TemplateDispatchNode,
     RosterDispatchNode,
 )
+
+_SKILLS_DIR = get_skills_working_dir()
 
 
 def _extract_template_vars(s: str) -> list[str]:
@@ -62,15 +65,15 @@ def _build_execution_constraint(count: int) -> str:
     lines = [
         '  <execution_constraint type="MANDATORY_PARALLEL">',
         f"    You MUST dispatch ALL {count} agents in ONE assistant message.",
-        "    Your message must contain exactly N Task tool calls, issued together.",
+        "    Your message must contain exactly N agent dispatch calls, issued together.",
         "",
-        "    CORRECT (single message, multiple tools):",
-        "      [You send ONE message containing Task call 1, Task call 2, ... Task call N]",
+        "    CORRECT (single message, multiple agents):",
+        "      [You send ONE message dispatching agent 1, agent 2, ... agent N together]",
         "",
         "    WRONG (sequential):",
-        "      [You send message with Task call 1]",
+        "      [You dispatch agent 1]",
         "      [You wait for result]",
-        "      [You send message with Task call 2]",
+        "      [You dispatch agent 2]",
         "",
         "    FORBIDDEN: Waiting for any agent before dispatching the next.",
         "  </execution_constraint>",
@@ -93,7 +96,7 @@ def _build_model_selection(model: str | None) -> str:
     if model is None:
         lines = [
             "  <model_selection>",
-            "    Use DEFAULT model (omit model parameter from Task tool).",
+            "    Use DEFAULT model (omit model parameter).",
             "    Do NOT carry forward model selections from previous steps.",
             "  </model_selection>",
         ]
@@ -133,7 +136,7 @@ def render_subagent_dispatch(node: SubagentDispatchNode) -> str:
     if node.model:
         lines.append(f'  <model>{node.model}</model>')
     else:
-        lines.append('  <model>DEFAULT (omit model parameter from Task tool)</model>')
+        lines.append('  <model>DEFAULT (omit model parameter)</model>')
 
     if node.prompt:
         lines.append("  <prompt>")
@@ -143,7 +146,7 @@ def render_subagent_dispatch(node: SubagentDispatchNode) -> str:
 
     # Wrap invoke in directive to signal immediate execution
     lines.append('  <directive action="IMMEDIATELY invoke">')
-    lines.append(f'    <invoke working-dir=".claude/skills/scripts" cmd="{node.command}" />')
+    lines.append(f'    <invoke working-dir="{_SKILLS_DIR}" cmd="{node.command}" />')
     lines.append('  </directive>')
 
     lines.append("</subagent_dispatch>")
@@ -198,7 +201,7 @@ def render_template_dispatch(node: TemplateDispatchNode) -> str:
                 lines.append(f"        {prompt_line}" if prompt_line else "")
             lines.append("      </prompt>")
 
-        lines.append(f'      <invoke working-dir=".claude/skills/scripts" cmd="{e["command"]}" />')
+        lines.append(f'      <invoke working-dir="{_SKILLS_DIR}" cmd="{e["command"]}" />')
         lines.append("    </agent>")
     lines.append("  </agents>")
 
@@ -257,7 +260,7 @@ def render_roster_dispatch(node: RosterDispatchNode) -> str:
         for task_line in agent_prompt.split("\n"):
             lines.append(f"        {task_line}" if task_line else "")
         lines.append("      </task>")
-        lines.append(f'      <invoke working-dir=".claude/skills/scripts" cmd="{node.command}" />')
+        lines.append(f'      <invoke working-dir="{_SKILLS_DIR}" cmd="{node.command}" />')
         lines.append("    </agent>")
     lines.append("  </agents>")
 

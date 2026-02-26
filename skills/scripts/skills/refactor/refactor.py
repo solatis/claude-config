@@ -20,11 +20,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
+from skills.lib.paths import get_skills_working_dir
 from skills.lib.workflow.core import (
     Arg,
     StepDef,
     Workflow,
 )
+
+_SKILLS_DIR = get_skills_working_dir()
 from skills.lib.workflow.ast import (
     W, XMLRenderer, render, TextNode, FileContentNode,
     TemplateDispatchNode, render_template_dispatch,
@@ -229,10 +232,10 @@ def build_explore_dispatch(n: int = DEFAULT_CATEGORY_COUNT, mode_filter: str = "
 CATEGORY: $name
 MODE: $mode
 
-Start: <invoke working-dir=".claude/skills/scripts" cmd="python3 -m """ + EXPLORE_MODULE_PATH + """ --step 1 --category $ref --mode $mode""" + scope_arg + """" />"""
+Start: <invoke working-dir=\"""" + _SKILLS_DIR + """\" cmd="python3 -m """ + EXPLORE_MODULE_PATH + """ --step 1 --category $ref --mode $mode""" + scope_arg + """" />"""
 
     # Command template (also has $var placeholders)
-    command = f'<invoke working-dir=".claude/skills/scripts" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $ref --mode $mode{scope_arg}" />'
+    command = f'<invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $ref --mode $mode{scope_arg}" />'
 
     node = TemplateDispatchNode(
         agent_type="general-purpose",
@@ -1145,10 +1148,10 @@ DO NOT modify commands. DO NOT skip steps. DO NOT interpret.
 
     invoke_after = f"""<invoke_after>
   <if_custom>
-    <invoke working-dir=".claude/skills/scripts" cmd="python3 -m {MODULE_PATH} --step 2 --mode custom{scope_arg}" />
+    <invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {MODULE_PATH} --step 2 --mode custom{scope_arg}" />
   </if_custom>
   <if_not_custom>
-    <invoke working-dir=".claude/skills/scripts" cmd="python3 -m {MODULE_PATH} --step 2 --n {n} --mode $MODE{scope_arg}" />
+    <invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {MODULE_PATH} --step 2 --n {n} --mode $MODE{scope_arg}" />
   </if_not_custom>
 </invoke_after>"""
     parts.append(invoke_after)
@@ -1324,10 +1327,10 @@ def format_step_3_verification(info: dict, scope: str | None = None, retry: int 
         # Still have retry budget
         invoke_after = f"""<invoke_after>
   <if_revise>
-    <invoke working-dir=".claude/skills/scripts" cmd="python3 -m {MODULE_PATH} --step 3 --mode custom{scope_arg} --retry 1" />
+    <invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {MODULE_PATH} --step 3 --mode custom{scope_arg} --retry 1" />
   </if_revise>
   <if_pass>
-    <invoke working-dir=".claude/skills/scripts" cmd="python3 -m {MODULE_PATH} --step 4 --mode custom{scope_arg}" />
+    <invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {MODULE_PATH} --step 4 --mode custom{scope_arg}" />
   </if_pass>
 </invoke_after>"""
     else:
@@ -1351,7 +1354,7 @@ def format_step_4_dispatch_custom(info: dict, scope: str | None = None) -> str:
 
     scope_display = scope or "entire codebase"
     scope_arg = f" --scope {shlex.quote(scope)}" if scope else ""
-    invoke_cmd = f'<invoke working-dir=".claude/skills/scripts" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $CATEGORY_REF --mode code{scope_arg}" />'
+    invoke_cmd = f'<invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $CATEGORY_REF --mode code{scope_arg}" />'
 
     actions = [
         "DISPATCH explore agents for verified categories.",
