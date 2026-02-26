@@ -19,6 +19,9 @@
 !README.md
 !LICENSE
 !.gitignore
+!install.py
+!install.sh
+!manifest-plan.md
 
 # Always ignore these, even in tracked directories
 .DS_Store
