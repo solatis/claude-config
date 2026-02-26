@@ -16,7 +16,7 @@ MANIFEST_FILE = ".install-manifest.json"
 MANIFEST_VERSION = 1
 
 ALWAYS_EXCLUSIONS = {".git", ".github", "CLAUDE.md", "README.md"}
-ROOT_EXCLUSIONS = {"install.py", "install.sh", ".gitignore", "LICENSE", MANIFEST_FILE}
+ROOT_EXCLUSIONS = {"install.py", "install.sh", ".gitignore", "LICENSE", "manifest-plan.md", MANIFEST_FILE}
 
 TOOL_PROFILES = {
     "claude": {
