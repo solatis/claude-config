@@ -6,7 +6,7 @@ Cross-repository documentation synchronization skill.
 
 | File        | What                               | When to read                 |
 | ----------- | ---------------------------------- | ---------------------------- |
-| `SKILL.md`  | Skill activation and full workflow | Using this skill             |
+| `SKILL.tpl.md`  | Skill activation and full workflow | Using this skill             |
 | `README.md` | Architecture and design decisions  | Understanding skill behavior |
 
 ## Subdirectories

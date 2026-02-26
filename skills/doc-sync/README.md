@@ -1,10 +1,11 @@
 # Doc Sync
 
-The CLAUDE.md/README.md hierarchy is central to context hygiene. CLAUDE.md files
-are pure indexes -- tabular navigation with "What" and "When to read" columns
-that help LLMs (and humans) find relevant files without loading everything.
-README.md files capture invisible knowledge: architecture decisions, design
-tradeoffs, and invariants that are not apparent from reading code.
+The index-file/README.md hierarchy is central to context hygiene (AGENTS.md in
+Pi, CLAUDE.md in Claude Code). The index files are pure navigation tables with
+"What" and "When to read" columns that help LLMs (and humans) find relevant
+files without loading everything. README.md files capture invisible knowledge:
+architecture decisions, design tradeoffs, and invariants that are not apparent
+from reading code.
 
 The doc-sync skill audits and synchronizes this hierarchy across a repository.
 
@@ -13,10 +14,10 @@ The doc-sync skill audits and synchronizes this hierarchy across a repository.
 The skill operates in five phases:
 
 1. **Discovery** -- Maps all directories, identifies missing or outdated
-   CLAUDE.md files
+   index files (AGENTS.md/CLAUDE.md)
 2. **Audit** -- Checks for drift (files added/removed but not indexed),
-   misplaced content (architecture docs in CLAUDE.md instead of README.md)
-3. **Migration** -- Moves architectural content from CLAUDE.md to README.md
+   misplaced content (architecture docs in index files instead of README.md)
+3. **Migration** -- Moves architectural content from index files to README.md
 4. **Update** -- Creates/updates indexes with proper tabular format
 5. **Verification** -- Confirms complete coverage and correct structure
 

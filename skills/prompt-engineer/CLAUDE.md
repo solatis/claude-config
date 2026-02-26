@@ -6,7 +6,7 @@ Prompt optimization skill. IMMEDIATELY invoke the script -- do NOT explore or an
 
 | File        | What             | When to read         |
 | ----------- | ---------------- | -------------------- |
-| `SKILL.md`  | Skill invocation | Using this skill     |
+| `SKILL.tpl.md`  | Skill invocation | Using this skill     |
 | `README.md` | Architecture     | Understanding design |
 
 ## Subdirectories

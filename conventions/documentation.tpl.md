@@ -1,17 +1,17 @@
 # Documentation Conventions
 
 This is the authoritative documentation conventions file. All code-adjacent
-documentation (CLAUDE.md, README.md) must follow these principles.
+documentation ({{AGENTS_MD}}, README.md) must follow these principles.
 
 ## Core Principles
 
-**Self-contained documentation**: All code-adjacent documentation (CLAUDE.md,
+**Self-contained documentation**: All code-adjacent documentation ({{AGENTS_MD}},
 README.md) must be self-contained. Do NOT reference external authoritative
 sources (doc/ directories, wikis, external documentation). If knowledge exists
 in an authoritative source, it must be summarized locally. Duplication is
 acceptable; the maintenance burden is the cost of locality.
 
-**CLAUDE.md = pure index**: CLAUDE.md files are navigation aids only. They
+**{{AGENTS_MD}} = pure index**: {{AGENTS_MD}} files are navigation aids only. They
 contain WHAT is in the directory and WHEN to read each file. All explanatory
 content (architecture, decisions, invariants) belongs in README.md.
 
@@ -19,7 +19,7 @@ content (architecture, decisions, invariants) belongs in README.md.
 visible from reading source code. If ANY invisible knowledge exists for a
 directory, README.md is required.
 
-## CLAUDE.md Format Specification
+## {{AGENTS_MD}} Format Specification
 
 ### Index Format
 
@@ -56,7 +56,7 @@ column and identify the right file?
 
 ### Generated and Vendored Code
 
-CLAUDE.md MUST flag files/directories that should not be manually edited:
+{{AGENTS_MD}} MUST flag files/directories that should not be manually edited:
 
 | Directory      | What                              | When to read        |
 | -------------- | --------------------------------- | ------------------- |
@@ -72,9 +72,9 @@ code, and prevents edits that will be overwritten or cause merge conflicts.
 
 See also: conventions/code-quality/baseline.md "Generated and Vendored Code Awareness".
 
-### ROOT vs SUBDIRECTORY CLAUDE.md
+### ROOT vs SUBDIRECTORY {{AGENTS_MD}}
 
-**ROOT CLAUDE.md:**
+**ROOT {{AGENTS_MD}}:**
 
 ```markdown
 # [Project Name]
@@ -104,7 +104,7 @@ See also: conventions/code-quality/baseline.md "Generated and Vendored Code Awar
 [Setup instructions, environment requirements, workflow notes]
 ```
 
-**SUBDIRECTORY CLAUDE.md:**
+**SUBDIRECTORY {{AGENTS_MD}}:**
 
 ```markdown
 # [directory-name]/
@@ -120,7 +120,7 @@ See also: conventions/code-quality/baseline.md "Generated and Vendored Code Awar
 | --------- | ---- | ------------ |
 ```
 
-**Critical constraint:** CLAUDE.md files are navigation aids, not explanatory
+**Critical constraint:** {{AGENTS_MD}} files are navigation aids, not explanatory
 documents. They contain:
 
 - File/directory index (REQUIRED): tabular format with What/When columns

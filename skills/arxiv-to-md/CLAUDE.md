@@ -7,7 +7,7 @@ when user provides an arXiv ID or URL. Do NOT explore first.
 
 | File        | What                              | When to read                 |
 | ----------- | --------------------------------- | ---------------------------- |
-| `SKILL.md`  | Skill invocation                  | Using this skill             |
+| `SKILL.tpl.md`  | Skill invocation                  | Using this skill             |
 | `README.md` | Architecture, invisible knowledge | Understanding design choices |
 
 Python code in `scripts/skills/arxiv_to_md/`:

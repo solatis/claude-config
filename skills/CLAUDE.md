@@ -53,8 +53,8 @@ Example:
 
 <invoke working-dir=".claude/skills/scripts" cmd="python3 -m skills.problem_analysis.analyze --step 1" />
 
-Note: SKILL.md files in each skill directory use `{{SKILLS_DIR}}` as a template
-variable instead of the literal path. The installer substitutes the correct
-path per target tool (e.g., `.claude/skills/scripts` for Claude Code,
-`.pi/agent/skills/scripts` for Pi) during installation. This CLAUDE.md is a
-development artifact and is never installed.
+Note: source templates are named `SKILL.tpl.md` in each skill directory. The
+installer renders them to `SKILL.md` and substitutes variables like
+`{{SKILLS_DIR}}` with the correct path per target tool (e.g.,
+`.claude/skills/scripts` for Claude Code, `.pi/agent/skills/scripts` for Pi).
+This CLAUDE.md is a development artifact and is never installed.

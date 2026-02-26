@@ -22,6 +22,7 @@ TOOL_PROFILES = {
     "claude": {
         "CONFIG_DIR": ".claude",
         "SKILLS_DIR": ".claude/skills/scripts",
+        "AGENTS_MD": "CLAUDE.md",
         "MODEL_STRONG": "opus",
         "MODEL_GENERAL_PURPOSE": "sonnet",
         "MODEL_CHEAP": "haiku",
@@ -35,8 +36,12 @@ TOOL_PROFILES = {
     },
 }
 
+TEMPLATE_DEFAULTS = {
+    "AGENTS_MD": "AGENTS.md",
+}
+
 TEMPLATE_PATTERN = re.compile(r"\{\{(\w+)\}\}")
-TEMPLATE_EXTENSIONS = {".md", ".yaml", ".yml"}
+TEMPLATE_SUFFIXES = (".tpl.md", ".tpl.py")
 
 
 def process_templates(content: str, variables: dict) -> str:
@@ -52,9 +57,42 @@ def process_templates(content: str, variables: dict) -> str:
     return TEMPLATE_PATTERN.sub(replace, content)
 
 
-def copy_file(src: Path, dst: Path, variables: dict) -> None:
-    """Copy file, applying template substitution for text files."""
-    if src.suffix in TEMPLATE_EXTENSIONS:
+def is_template_rel_path(rel_path: str) -> bool:
+    """Return True if file should be interpreted as an install template."""
+    name = Path(rel_path).name
+    return any(name.endswith(suffix) for suffix in TEMPLATE_SUFFIXES)
+
+
+def render_install_rel_path(rel_path: str) -> str:
+    """Map source path to installed path by stripping `.tpl` from filename."""
+    if not is_template_rel_path(rel_path):
+        return rel_path
+    path = Path(rel_path)
+    rendered_name = path.name.replace(".tpl.", ".", 1)
+    return str(path.with_name(rendered_name))
+
+
+def build_install_file_map(source: Path) -> dict[str, str]:
+    """Build {installed_rel_path: source_rel_path} map for tracked install files."""
+    file_map: dict[str, str] = {}
+    for source_rel_path in get_tracked_files(source):
+        if should_exclude(source_rel_path):
+            continue
+        install_rel_path = render_install_rel_path(source_rel_path)
+        if install_rel_path in file_map:
+            print(
+                "ERROR: Multiple source files map to the same install path: "
+                f"{file_map[install_rel_path]} and {source_rel_path} -> {install_rel_path}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        file_map[install_rel_path] = source_rel_path
+    return file_map
+
+
+def copy_file(src: Path, dst: Path, variables: dict, is_template: bool) -> None:
+    """Copy file, applying template substitution for `.tpl` files."""
+    if is_template:
         content = src.read_text()
         processed = process_templates(content, variables)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -86,14 +124,14 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def hash_content(src: Path, variables: dict) -> str:
+def hash_content(src: Path, variables: dict, is_template: bool) -> str:
     """Compute SHA256 of file content as it would be installed.
 
-    Applies template substitution for eligible file types, matching
-    the transformation that copy_file() performs. This enables dry-run
-    to detect whether an upgrade would actually change a file.
+    Applies template substitution for `.tpl` files, matching copy_file().
+    This enables dry-run to detect whether an upgrade would actually
+    change a file.
     """
-    if src.suffix in TEMPLATE_EXTENSIONS:
+    if is_template:
         content = src.read_text()
         processed = process_templates(content, variables)
         return hashlib.sha256(processed.encode()).hexdigest()
@@ -151,7 +189,7 @@ def install(source: Path, target: Path, dry_run: bool = False, variables: dict =
         print("ERROR: Manifest exists. Use 'upgrade' instead.", file=sys.stderr)
         sys.exit(1)
 
-    files = get_tracked_files(source)
+    install_file_map = build_install_file_map(source)
     manifest = {
         "version": MANIFEST_VERSION,
         "source_commit": get_head_commit(source),
@@ -160,17 +198,15 @@ def install(source: Path, target: Path, dry_run: bool = False, variables: dict =
         "files": {},
     }
 
-    for rel_path in sorted(files):
-        if should_exclude(rel_path):
-            continue
-
-        src_file = source / rel_path
+    for rel_path in sorted(install_file_map):
+        source_rel_path = install_file_map[rel_path]
+        src_file = source / source_rel_path
         dst_file = target / rel_path
 
         if dry_run:
             print(f"NEW {dst_file}")
         else:
-            copy_file(src_file, dst_file, variables)
+            copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
             manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -201,7 +237,8 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
     if not dry_run:
         marker.write_text(datetime.now(timezone.utc).isoformat())
 
-    new_files = set(f for f in get_tracked_files(source) if not should_exclude(f))
+    install_file_map = build_install_file_map(source)
+    new_files = set(install_file_map.keys())
     old_files = set(old_manifest["files"].keys())
 
     to_add = new_files - old_files
@@ -220,10 +257,11 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
 
     # Handle updates (check for conflicts, skip unchanged)
     for rel_path in sorted(to_update):
-        src_file = source / rel_path
+        source_rel_path = install_file_map[rel_path]
+        src_file = source / source_rel_path
         dst_file = target / rel_path
 
-        src_hash = hash_content(src_file, variables)
+        src_hash = hash_content(src_file, variables, is_template_rel_path(source_rel_path))
         old_hash = old_manifest["files"][rel_path]["sha256"]
         changed = src_hash != old_hash
 
@@ -247,7 +285,7 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
         if dry_run:
             print(f"UPDATE {dst_file}")
         else:
-            copy_file(src_file, dst_file, variables)
+            copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
             new_manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -256,12 +294,13 @@ def upgrade(source: Path, target: Path, dry_run: bool, force: bool, variables: d
 
     # Handle additions
     for rel_path in sorted(to_add):
-        src_file = source / rel_path
+        source_rel_path = install_file_map[rel_path]
+        src_file = source / source_rel_path
         dst_file = target / rel_path
         if dry_run:
             print(f"NEW {dst_file}")
         else:
-            copy_file(src_file, dst_file, variables)
+            copy_file(src_file, dst_file, variables, is_template_rel_path(source_rel_path))
             new_manifest["files"][rel_path] = {
                 "sha256": sha256_file(dst_file),
                 "size": dst_file.stat().st_size,
@@ -381,7 +420,7 @@ def main():
     args.target = args.target.expanduser().resolve()
 
     source = args.source or Path(__file__).parent
-    variables = TOOL_PROFILES[args.tool]
+    variables = {**TEMPLATE_DEFAULTS, **TOOL_PROFILES[args.tool]}
 
     if args.command in ("install", "upgrade") and not source.is_dir():
         print(f"ERROR: Source directory not found: {source}", file=sys.stderr)

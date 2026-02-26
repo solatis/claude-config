@@ -7,7 +7,7 @@ invoke the script -- do NOT explore first.
 
 | File        | What                                  | When to read               |
 | ----------- | ------------------------------------- | -------------------------- |
-| `SKILL.md`  | Skill invocation                      | Using this skill           |
+| `SKILL.tpl.md`  | Skill invocation                      | Using this skill           |
 | `README.md` | Workflow, design rationale, citations | Understanding why it works |
 
 Python code: `scripts/skills/deepthink/think.py` (main), `subagent.py`

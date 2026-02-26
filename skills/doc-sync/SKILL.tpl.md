@@ -5,13 +5,13 @@ description: Synchronizes docs across a repository. Use when user asks to sync d
 
 # Doc Sync
 
-Maintains the CLAUDE.md navigation hierarchy and README.md invisible knowledge
+Maintains the {{AGENTS_MD}} navigation hierarchy and README.md invisible knowledge
 docs across a repository. This skill is self-contained and performs all
 documentation work directly.
 
 ## Documentation Conventions
 
-For authoritative CLAUDE.md and README.md format specification:
+For authoritative {{AGENTS_MD}} and README.md format specification:
 
 <file working-dir="{{CONFIG_DIR}}" uri="conventions/documentation.md" />
 
@@ -25,7 +25,7 @@ Determine scope FIRST:
 | ------------------------------------------------------- | ----------------------------------------- |
 | "sync docs" / "update documentation" / no specific path | REPOSITORY-WIDE                           |
 | "sync docs in src/validator/"                           | DIRECTORY: src/validator/ and descendants |
-| "update CLAUDE.md for parser.py"                        | FILE: single file's parent directory      |
+| "update {{AGENTS_MD}} for parser.py"                       | FILE: single file's parent directory      |
 
 For REPOSITORY-WIDE scope, perform a full audit. For narrower scopes, operate only within the specified boundary.
 
@@ -33,7 +33,7 @@ For REPOSITORY-WIDE scope, perform a full audit. For narrower scopes, operate on
 
 ### Phase 1: Discovery
 
-Map directories requiring CLAUDE.md verification:
+Map directories requiring {{AGENTS_MD}} verification:
 
 ```bash
 # Find all directories (excluding .git, node_modules, __pycache__, etc.)
@@ -42,7 +42,7 @@ find . -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name
 
 For each directory in scope, record:
 
-1. Does CLAUDE.md exist?
+1. Does {{AGENTS_MD}} exist?
 2. If yes, does it have the required table-based index structure?
 3. What files/subdirectories exist that need indexing?
 
@@ -52,7 +52,7 @@ For each directory, check for drift and misplaced content:
 
 ```
 <audit_check dir="[path]">
-CLAUDE.md exists: [YES/NO]
+{{AGENTS_MD}} exists: [YES/NO]
 Has table-based index: [YES/NO]
 Files in directory: [list]
 Files in index: [list]
@@ -67,9 +67,9 @@ README.md warranted: [YES/NO] (invisible knowledge present?)
 
 ### Phase 3: Content Migration
 
-**Critical:** If CLAUDE.md contains content that does NOT belong there, migrate it:
+**Critical:** If {{AGENTS_MD}} contains content that does NOT belong there, migrate it:
 
-Content that MUST be moved from CLAUDE.md to README.md:
+Content that MUST be moved from {{AGENTS_MD}} to README.md:
 
 - Architecture explanations or diagrams
 - Design decision documentation
@@ -83,7 +83,7 @@ Content that MUST be moved from CLAUDE.md to README.md:
 - Purpose sections with prose (beyond one sentence)
 - Any bullet-point lists explaining rationale
 
-Content that MAY stay in CLAUDE.md (operational sections):
+Content that MAY stay in {{AGENTS_MD}} (operational sections):
 
 - Build commands specific to this directory
 - Test commands specific to this directory
@@ -93,20 +93,20 @@ Content that MAY stay in CLAUDE.md (operational sections):
 
 **Test:** Ask "is this explaining WHY or telling HOW?" Explanatory content
 (architecture, decisions, rationale) goes to README.md. Operational content
-(commands, procedures) stays in CLAUDE.md.
+(commands, procedures) stays in {{AGENTS_MD}}.
 
 Migration process:
 
-1. Identify misplaced content in CLAUDE.md
+1. Identify misplaced content in {{AGENTS_MD}}
 2. Create or update README.md with the architectural content
-3. Strip CLAUDE.md down to pure index format
-4. Add README.md to the CLAUDE.md index table
+3. Strip {{AGENTS_MD}} down to pure index format
+4. Add README.md to the {{AGENTS_MD}} index table
 
 ### Phase 4: Index Updates
 
 For each directory needing work:
 
-**Creating/Updating CLAUDE.md:**
+**Creating/Updating {{AGENTS_MD}}:**
 
 1. Use the appropriate template (ROOT or SUBDIRECTORY)
 2. Populate tables with all files and subdirectories
@@ -126,12 +126,12 @@ For each directory needing work:
 
 After all updates complete, verify:
 
-1. Every directory in scope has CLAUDE.md
-2. All CLAUDE.md files use table-based index format (pure navigation)
+1. Every directory in scope has {{AGENTS_MD}}
+2. All {{AGENTS_MD}} files use table-based index format (pure navigation)
 3. No drift remains (files <-> index entries match)
-4. No misplaced content in CLAUDE.md (explanatory prose moved to README.md)
-5. README.md files are indexed in their parent CLAUDE.md
-6. CLAUDE.md contains only: one-sentence overview + tabular index + operational sections
+4. No misplaced content in {{AGENTS_MD}} (explanatory prose moved to README.md)
+5. README.md files are indexed in their parent {{AGENTS_MD}}
+6. {{AGENTS_MD}} contains only: one-sentence overview + tabular index + operational sections
 7. README.md exists wherever invisible knowledge was identified
 8. README.md files are self-contained (no external authoritative references)
 
@@ -143,16 +143,16 @@ After all updates complete, verify:
 ### Scope: [REPOSITORY-WIDE | directory path]
 
 ### Changes Made
-- CREATED: [list of new CLAUDE.md files]
-- UPDATED: [list of modified CLAUDE.md files]
-- MIGRATED: [list of content moved from CLAUDE.md to README.md]
+- CREATED: [list of new {{AGENTS_MD}} files]
+- UPDATED: [list of modified {{AGENTS_MD}} files]
+- MIGRATED: [list of content moved from {{AGENTS_MD}} to README.md]
 - CREATED: [list of new README.md files]
 - FLAGGED: [any issues requiring human decision]
 
 ### Verification
 - Directories audited: [count]
-- CLAUDE.md coverage: [count]/[total] (100%)
-- CLAUDE.md format: [count] pure index / [count] needed migration
+- {{AGENTS_MD}} coverage: [count]/[total] (100%)
+- {{AGENTS_MD}} format: [count] pure index / [count] needed migration
 - Drift detected: [count] entries fixed
 - Content migrations: [count] (prose moved to README.md)
 - README.md files: [count] (wherever invisible knowledge exists)
@@ -161,16 +161,16 @@ After all updates complete, verify:
 
 ## Exclusions
 
-DO NOT create CLAUDE.md for:
+DO NOT create {{AGENTS_MD}} for:
 
 - Generated files directories (dist/, build/, compiled outputs)
 - Vendored dependencies (node_modules/, vendor/, third_party/)
 - Git internals (.git/)
 - IDE/editor configs (.idea/, .vscode/ unless project-specific settings)
 - **Stub directories** (contain only `.gitkeep` or no code files) - these do not
-  require CLAUDE.md until code is added
+  require {{AGENTS_MD}} until code is added
 
-DO NOT index (skip these files in CLAUDE.md):
+DO NOT index (skip these files in {{AGENTS_MD}}):
 
 - Generated files (_.generated._, compiled outputs)
 - Vendored dependency files
@@ -215,7 +215,7 @@ DO index:
 - Single file documentation (inline comments, docstrings) - handle directly
 - Code comments - handle directly
 - Function/module docstrings - handle directly
-- This skill is for CLAUDE.md/README.md synchronization specifically
+- This skill is for {{AGENTS_MD}}/README.md synchronization specifically
 
 ## Reference
 
