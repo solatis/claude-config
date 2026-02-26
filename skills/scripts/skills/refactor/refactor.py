@@ -4,7 +4,7 @@ Refactor Skill - Category-based code smell detection and synthesis.
 
 Six-phase workflow:
   1. Mode Selection - Analyze user request to determine design/code/both
-  2. Dispatch      - Launch parallel Explore agents (one per randomly selected target)
+  2. Dispatch      - Launch parallel exploration sub-agents (one per randomly selected target)
   3. Triage        - Review findings, structure as smells with IDs
   4. Cluster       - Group smells by shared root cause
   5. Contextualize - Extract user intent, prioritize issues
@@ -205,7 +205,7 @@ def select_targets(n: int = DEFAULT_CATEGORY_COUNT, mode_filter: str = "both") -
 
 
 def build_explore_dispatch(n: int = DEFAULT_CATEGORY_COUNT, mode_filter: str = "both", scope: str | None = None) -> str:
-    """Build parallel dispatch block for explore agents.
+    """Build parallel dispatch block for exploration sub-agents.
 
     Each category uses the same 5-step explore workflow; only the category reference differs.
     Uses TemplateDispatchNode for SIMD-style dispatch: single instruction, multiple data.
@@ -223,7 +223,7 @@ def build_explore_dispatch(n: int = DEFAULT_CATEGORY_COUNT, mode_filter: str = "
         for t in selected
     )
 
-    # Scope propagation to explore agents
+    # Scope propagation to exploration sub-agents
     scope_arg = f" --scope {shlex.quote(scope)}" if scope else ""
 
     # Template prompt with $var placeholders
@@ -238,12 +238,12 @@ Start: <invoke working-dir=\"""" + _SKILLS_DIR + """\" cmd="python3 -m """ + EXP
     command = f'<invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $ref --mode $mode{scope_arg}" />'
 
     node = TemplateDispatchNode(
-        agent_type="general-purpose",
+        agent_type="exploration-capable",
         template=template,
         targets=targets,
         command=command,
-        model="haiku",
-        instruction=f"Launch {len(selected)} general-purpose sub-agents for code smell exploration.",
+        model="fast lightweight model suitable for high-fanout pattern scanning",
+        instruction=f"Launch {len(selected)} exploration sub-agents for code smell exploration.",
     )
 
     return render_template_dispatch(node)
@@ -273,7 +273,7 @@ STEPS = {
     },
     2: {
         "title": "Dispatch / Category Selection",
-        "brief": "Non-custom: dispatch explore agents. Custom: LLM selects categories.",
+        "brief": "Non-custom: dispatch exploration sub-agents. Custom: LLM selects categories.",
     },
     3: {
         "title": "Category Verification",
@@ -287,7 +287,7 @@ STEPS = {
         "title": "Triage",
         "brief": "Structure smell findings with IDs for synthesis",
         "actions": [
-            "REVIEW all smell_report outputs from explore agents.",
+            "REVIEW all smell_report outputs from exploration sub-agents.",
             "",
             "STRUCTURE each finding as a smell object with unique ID:",
             "",
@@ -1190,7 +1190,7 @@ DO NOT modify commands. DO NOT skip steps. DO NOT interpret.
         "",
         format_expected_output({
             "Per target": "smell_report with severity (none/low/medium/high) and findings",
-            "Format": "<smell_report> blocks from each Explore agent",
+            "Format": "<smell_report> blocks from each exploration sub-agent",
         })
     ]
 
@@ -1357,23 +1357,23 @@ def format_step_4_dispatch_custom(info: dict, scope: str | None = None) -> str:
     invoke_cmd = f'<invoke working-dir="{_SKILLS_DIR}" cmd="python3 -m {EXPLORE_MODULE_PATH} --step 1 --category $CATEGORY_REF --mode code{scope_arg}" />'
 
     actions = [
-        "DISPATCH explore agents for verified categories.",
+        "DISPATCH exploration sub-agents for verified categories.",
         "",
         "Using the <verified_categories> from Step 3:",
         "",
-        '<parallel_dispatch agent="Explore" count="N">',
+        '<parallel_dispatch agent="exploration-capable" count="N">',
         "  <instruction>",
-        "    Launch one general-purpose sub-agent per verified category.",
+        "    Launch one exploration-capable sub-agent per verified category.",
         "  </instruction>",
         "",
         '  <execution_constraint type="MANDATORY_PARALLEL">',
         "    You MUST dispatch ALL agents in ONE assistant message.",
         "    FORBIDDEN: Waiting for any agent before dispatching the next.",
-        '    FORBIDDEN: Using "Explore" subagent_type. Use "general-purpose".',
         "  </execution_constraint>",
         "",
         "  <model_selection>",
-        "    Use HAIKU (default) for all agents.",
+        "    Prefer a fast lightweight model for high-fanout exploration.",
+        "    If unavailable, use your environment's default model.",
         "  </model_selection>",
         "",
         "  <template>",
@@ -1578,9 +1578,9 @@ def main(
                        default="both",
                        help="Category selection mode. custom: LLM selects based on problem statement")
 
-    # Filesystem constraint propagated to all explore agents
+    # Filesystem constraint propagated to all exploration sub-agents
     parser.add_argument("--scope", type=str, default=None,
-                       help="Filesystem scope constraint (e.g., 'src/planner/'). Propagates to explore agents.")
+                       help="Filesystem scope constraint (e.g., 'src/planner/'). Propagates to exploration sub-agents.")
 
     # Verification loopback counter (custom mode only, internal)
     parser.add_argument("--retry", type=int, default=0,

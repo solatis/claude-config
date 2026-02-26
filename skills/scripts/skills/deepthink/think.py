@@ -515,7 +515,7 @@ DISPATCH_CONTEXT = (
     "- KEY ANALOGIES from Step 4\n"
     "- Their specific task definition from Step 8\n"
     "\n"
-    "AGENT PROMPT STRUCTURE (use for each agent's Task tool prompt):\n"
+    "AGENT PROMPT STRUCTURE (use for each dispatched sub-agent prompt):\n"
     "\n"
     "Explore this question from the assigned perspective.\n"
     "\n"
@@ -881,12 +881,12 @@ def build_dispatch_body() -> str:
     invoke_cmd = f'python3 -m {SUBAGENT_MODULE_PATH} --step 1'
 
     dispatch_text = roster_dispatch(
-        agent_type="general-purpose",
+        agent_type="analytical reasoning (multi-perspective, evidence-grounded)",
         agents=DISPATCH_AGENTS,
         command=invoke_cmd,
         shared_context=DISPATCH_CONTEXT,
-        model="sonnet",
-        instruction="Launch ALL sub-agents from FINAL SUB-AGENT DEFINITIONS (Step 8). Use a SINGLE message with multiple Task tool calls.",
+        model="reasoning-capable model suitable for nuanced synthesis",
+        instruction="Launch ALL sub-agents from FINAL SUB-AGENT DEFINITIONS (Step 8). Use a SINGLE message with multiple agent dispatch calls.",
     )
 
     return dispatch_text

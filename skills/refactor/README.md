@@ -16,7 +16,7 @@ refactor.py                          explore.py (x10 parallel)
 ===========                          =========================
 
 Step 1: Dispatch -----------------> Step 1: Domain Context
-        (launch 10 explore agents)  Step 2: Principle + Violations
+        (launch 10 exploration sub-agents)  Step 2: Principle + Violations
                                     Step 3: Pattern Generation
                                     Step 4: Search
                                     Step 5: Synthesis
@@ -47,7 +47,7 @@ Step 5: Synthesize
 
 ## Design Decisions
 
-### 1. Five-Step Explore Workflow
+### 1. Five-Step Exploration Workflow
 
 The original 2-step explore workflow conflated multiple cognitive tasks in a
 single step. LLMs perform better when each cognitive task gets focused attention.
@@ -62,7 +62,7 @@ Step 5: Synthesis         - Format findings
 
 ### 2. Domain Context Per-Category (Not Lifted to Parent)
 
-Each explore agent does its own domain context analysis, rather than refactor.py
+Each exploration sub-agent does its own domain context analysis, rather than refactor.py
 doing it once and passing to all agents.
 
 Rationale: Different smell categories need different domain context aspects. A
