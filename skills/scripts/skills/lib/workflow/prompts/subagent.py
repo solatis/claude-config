@@ -25,17 +25,16 @@ SKILLS_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
 # ============================================================================
 # Building block templates used by multiple dispatch patterns
 
-TASK_TOOL_INSTRUCTION = """\
-ACTION: Use the Task tool to spawn this agent.
+DISPATCH_INSTRUCTION = """\
+ACTION: Dispatch a subagent to handle this task.
 
-Task tool parameters:
-  - subagent_type: {agent_type}
-  - model: {model_param}
-  - prompt: Include the task and invoke command below
-  - run_in_background: NEVER set this. Always omit or set false.
-    Background agents return full session transcripts via TaskOutput,
-    flooding the orchestrator context window. Foreground agents return
-    only the agent's final text response."""
+Use your available agent dispatch mechanism to spawn a subagent with:
+  - Agent: {agent_type}
+  - Model: {model_param}
+  - Prompt: Include the task and invoke command below
+  - IMPORTANT: Run in foreground, not background. Background dispatch
+    returns full session transcripts, flooding the orchestrator context.
+    Foreground dispatch returns only the agent's final response."""
 
 SUB_AGENT_INVOKE = """\
 MANDATORY INVOKE BLOCK - Copy VERBATIM into the agent's prompt:
@@ -52,13 +51,13 @@ The subagent needs "FIRST ACTION REQUIRED" to know it must run the command."""
 PARALLEL_CONSTRAINT = """\
 PARALLEL EXECUTION (MANDATORY):
     You MUST dispatch ALL {count} agents in ONE assistant message.
-    Send exactly {count} Task tool calls together.
+    Send exactly {count} agent dispatch calls together.
 
     CORRECT:
-        [ONE message with Task call 1, Task call 2, ... Task call N]
+        [ONE message with agent 1, agent 2, ... agent N dispatched together]
 
     WRONG:
-        [Message with Task call 1] -> [wait] -> [Message with Task call 2]
+        [Dispatch agent 1] -> [wait] -> [Dispatch agent 2]
 
     FORBIDDEN: Waiting for any agent before dispatching the next."""
 
@@ -73,7 +72,7 @@ SUBAGENT_TEMPLATE = """\
 DISPATCH SUB-AGENT
 ==================
 
-{task_tool_block}
+{dispatch_block}
 
 TASK FOR THE SUB-AGENT:
 {task_section}
@@ -90,10 +89,10 @@ DISPATCH {count} PARALLEL AGENTS
 
 {parallel_block}
 
-For EACH agent below, use Task tool with:
-  - subagent_type: {agent_type}
-  - model: {model_display}
-  - prompt: Task description + MANDATORY INVOKE BLOCK (copy exactly as shown)
+For EACH agent below, dispatch a subagent with:
+  - Agent: {agent_type}
+  - Model: {model_display}
+  - Prompt: Task description + MANDATORY INVOKE BLOCK (copy exactly as shown)
 
 PROMPT CONSTRUCTION RULES:
   - The MANDATORY INVOKE BLOCK must appear VERBATIM in each prompt
@@ -119,10 +118,10 @@ DISPATCH {count} PARALLEL AGENTS
 
 {parallel_block}
 
-For EACH agent below, use Task tool with:
-  - subagent_type: {agent_type}
-  - model: {model_display}
-  - prompt: Shared context + agent's unique task + MANDATORY INVOKE BLOCK (copy exactly)
+For EACH agent below, dispatch a subagent with:
+  - Agent: {agent_type}
+  - Model: {model_display}
+  - Prompt: Shared context + agent's unique task + MANDATORY INVOKE BLOCK (copy exactly)
 
 PROMPT CONSTRUCTION RULES:
   - The MANDATORY INVOKE BLOCK must appear VERBATIM in each prompt
@@ -147,10 +146,14 @@ Unique Task: {task}
 
 # --- Building block functions -----------------------------------------------
 
-def task_tool_instruction(agent_type: str, model: str | None) -> str:
-    """Tell main agent how to spawn sub-agent via Task tool."""
-    model_param = model if model else "omit (use default)"
-    return TASK_TOOL_INSTRUCTION.format(agent_type=agent_type, model_param=model_param)
+def dispatch_instruction(agent_type: str, model: str | None) -> str:
+    """Tell main agent how to spawn a subagent."""
+    model_param = model if model else "default (omit parameter)"
+    return DISPATCH_INSTRUCTION.format(agent_type=agent_type, model_param=model_param)
+
+
+# Backward compatibility alias
+task_tool_instruction = dispatch_instruction
 
 
 def sub_agent_invoke(cmd: str) -> str:
@@ -174,10 +177,10 @@ def subagent_dispatch(
     """Generate prompt for single sub-agent dispatch.
 
     Args:
-        agent_type: Task tool subagent_type (e.g., "general-purpose", "Explore")
+        agent_type: Agent description (e.g., "exploration", "developer")
         command: Shell command sub-agent must run after spawning
         prompt: Optional task description for sub-agent
-        model: Optional model override ("haiku", "sonnet", "opus")
+        model: Optional model preference (e.g., "fast, lightweight model")
 
     Returns:
         Complete dispatch prompt as plain text
@@ -185,7 +188,7 @@ def subagent_dispatch(
     task_section = prompt if prompt else "(No additional task - agent follows invoke command)"
 
     return SUBAGENT_TEMPLATE.format(
-        task_tool_block=task_tool_instruction(agent_type, model),
+        dispatch_block=dispatch_instruction(agent_type, model),
         task_section=task_section,
         invoke_block=sub_agent_invoke(command),
     )
@@ -205,11 +208,11 @@ def template_dispatch(
     before the LLM sees the prompt (expansion happens here, not at runtime).
 
     Args:
-        agent_type: Task tool subagent_type for all agents
+        agent_type: Agent description for all agents (e.g., "exploration")
         template: Prompt template with $var placeholders
         targets: List of dicts, each providing variable bindings for one agent
         command: Command template with $var placeholders
-        model: Optional model override for all agents
+        model: Optional model preference for all agents
         instruction: Optional instruction text
 
     Returns:
@@ -261,11 +264,11 @@ def roster_dispatch(
     Use when agents have fundamentally different roles (MIMD pattern).
 
     Args:
-        agent_type: Task tool subagent_type for all agents
+        agent_type: Agent description for all agents (e.g., "exploration")
         agents: List of unique task descriptions, one per agent
         command: Fixed command all agents run (same for all)
         shared_context: Optional context included in every agent's prompt
-        model: Optional model override for all agents
+        model: Optional model preference for all agents
         instruction: Optional instruction text
 
     Returns:
@@ -297,7 +300,8 @@ def roster_dispatch(
 
 __all__ = [
     # Building blocks
-    "task_tool_instruction",
+    "dispatch_instruction",
+    "task_tool_instruction",  # backward compat alias
     "sub_agent_invoke",
     "parallel_constraint",
     # Dispatch templates

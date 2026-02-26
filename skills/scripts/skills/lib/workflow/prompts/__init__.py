@@ -5,7 +5,8 @@ Prompts as strings composed via f-strings. No XML, no AST.
 
 from skills.lib.workflow.prompts.subagent import (
     # Building blocks
-    task_tool_instruction,
+    dispatch_instruction,
+    task_tool_instruction,  # backward compat alias
     sub_agent_invoke,
     parallel_constraint,
     # Dispatch templates
@@ -20,7 +21,8 @@ from skills.lib.workflow.prompts.file import format_file_content
 
 __all__ = [
     # Building blocks
-    "task_tool_instruction",
+    "dispatch_instruction",
+    "task_tool_instruction",  # backward compat alias
     "sub_agent_invoke",
     "parallel_constraint",
     # Dispatch templates

@@ -209,11 +209,11 @@ def build_survey_body() -> str:
     invoke_cmd = f'python3 -m {SUBAGENT_MODULE_PATH} --step 1'
 
     dispatch_text = roster_dispatch(
-        agent_type="general-purpose",
+        agent_type="exploration (file search, code reading, pattern matching)",
         agents=SURVEY_DISPATCH_AGENTS,
         command=invoke_cmd,
         shared_context=DISPATCH_CONTEXT,
-        model="haiku",
+        model="fast, lightweight model suitable for codebase exploration",
         instruction="Determine 2-5 focus areas from SCOPE analysis. "
                     "Each agent's unique task is its focus area description. "
                     "The focus area goes in the agent's prompt text, NOT as a CLI arg. "
