@@ -9,7 +9,7 @@ When this skill activates, IMMEDIATELY invoke the script. The script IS the work
 
 ## Invocation
 
-<invoke working-dir=".claude/skills/scripts" cmd="python3 -m skills.refactor.refactor --step 1 --n 10" />
+<invoke working-dir="{{SKILLS_DIR}}" cmd="python3 -m skills.refactor.refactor --step 1 --n 10" />
 
 | Argument | Required | Description                                   |
 | -------- | -------- | --------------------------------------------- |

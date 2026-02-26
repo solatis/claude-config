@@ -44,10 +44,17 @@ Failure to follow these patterns creates technical debt and inconsistency across
 
 ## Script Invocation
 
-All Python skill scripts are invoked as modules from `scripts/`:
+All Python skill scripts are invoked as modules from `scripts/`. When working
+from `~/.claude/` directly (development), use the literal path:
 
 <invoke working-dir=".claude/skills/scripts" cmd="python3 -m skills.<skill_name>.<module> --step 1" />
 
 Example:
 
 <invoke working-dir=".claude/skills/scripts" cmd="python3 -m skills.problem_analysis.analyze --step 1" />
+
+Note: SKILL.md files in each skill directory use `{{SKILLS_DIR}}` as a template
+variable instead of the literal path. The installer substitutes the correct
+path per target tool (e.g., `.claude/skills/scripts` for Claude Code,
+`.pi/agent/skills/scripts` for Pi) during installation. This CLAUDE.md is a
+development artifact and is never installed.

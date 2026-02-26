@@ -9,6 +9,6 @@ When this skill activates, IMMEDIATELY invoke the script. The script IS the work
 
 Invoke:
 
-<invoke working-dir=".claude/skills/scripts" cmd="python3 -m skills.deepthink.think --step 1" />
+<invoke working-dir="{{SKILLS_DIR}}" cmd="python3 -m skills.deepthink.think --step 1" />
 
 Do NOT explore or analyze first. Run the script and follow its output.
