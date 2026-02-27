@@ -1,6 +1,6 @@
 ---
 name: codebase-analysis
-description: Invoke IMMEDIATELY via python script when user requests codebase understanding, architecture comprehension, or repository orientation. Do NOT explore first - the script orchestrates exploration.
+description: Invoke IMMEDIATELY via python script BEFORE ANY exploration whenever the task needs understanding existing code/repo structure (codebase analysis, architecture comprehension, repository orientation, implementation lookup, behavior tracing, dependency flow, unfamiliar code navigation). NEVER launch exploration sub-agents or manual exploration first; this skill must run first and orchestrates all exploration.
 ---
 
 # Codebase Analysis
