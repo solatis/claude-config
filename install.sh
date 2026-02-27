@@ -9,6 +9,7 @@ TARGETS=()
 PASSTHROUGH_ARGS=()
 TOOL=""
 UNINSTALL=false
+VERBOSE=false
 
 # -- Usage -------------------------------------------------------------------
 
@@ -61,8 +62,13 @@ while [[ $# -gt 0 ]]; do
             UNINSTALL=true
             shift
             ;;
-        --dry-run|--force|--verbose|-v)
+        --dry-run|--force)
             PASSTHROUGH_ARGS+=("$1")
+            shift
+            ;;
+        --verbose|-v)
+            PASSTHROUGH_ARGS+=("$1")
+            VERBOSE=true
             shift
             ;;
         *)
@@ -158,6 +164,13 @@ run_installer() {
     fi
 
     echo "==> $command -> $target"
+    if $VERBOSE; then
+        if [[ -f "$manifest" ]]; then
+            echo "    found previous manifest file: $manifest"
+        else
+            echo "    no manifest file found at: $manifest"
+        fi
+    fi
 
     local cmd_args=("$command" --target "$target" "${PASSTHROUGH_ARGS[@]}")
     if [[ "$command" != "uninstall" ]]; then

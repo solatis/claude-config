@@ -156,7 +156,7 @@ def log_file_operation(op: str, path: Path, dry_run: bool, verbose: bool, detail
         print(f"{op} {path}")
 
 
-def load_manifest(target: Path) -> dict | None:
+def load_manifest(target: Path, verbose: bool = False) -> dict | None:
     """Load existing manifest or return None.
 
     Handles corrupted manifests gracefully: backs up the bad file and
@@ -164,9 +164,15 @@ def load_manifest(target: Path) -> dict | None:
     """
     manifest_path = target / MANIFEST_FILE
     if not manifest_path.exists():
+        if verbose:
+            print(f"INFO: No manifest found at {manifest_path}")
         return None
     try:
-        return json.loads(manifest_path.read_text())
+        manifest = json.loads(manifest_path.read_text())
+        if verbose:
+            file_count = len(manifest.get("files", {}))
+            print(f"INFO: Found previous manifest file: {manifest_path} ({file_count} tracked files)")
+        return manifest
     except json.JSONDecodeError:
         backup = manifest_path.with_suffix(".json.corrupted")
         shutil.copy2(manifest_path, backup)
@@ -200,7 +206,7 @@ def install(
     """Fresh install from source to target."""
     if variables is None:
         variables = {}
-    existing = load_manifest(target)
+    existing = load_manifest(target, verbose=verbose)
     if existing and not dry_run:
         print("ERROR: Manifest exists. Use 'upgrade' instead.", file=sys.stderr)
         sys.exit(1)
@@ -246,7 +252,7 @@ def upgrade(
     """Upgrade existing installation."""
     if variables is None:
         variables = {}
-    old_manifest = load_manifest(target)
+    old_manifest = load_manifest(target, verbose=verbose)
     if not old_manifest:
         print("ERROR: No manifest found. Use 'install' first.", file=sys.stderr)
         sys.exit(1)
