@@ -34,6 +34,14 @@ TOOL_PROFILES = {
         "MODEL_GENERAL_PURPOSE": "claude-sonnet-4-6",
         "MODEL_CHEAP": "claude-haiku-4-5",
     },
+    "openclaw": {
+        "CONFIG_DIR": ".openclaw",
+        "SKILLS_DIR": ".openclaw/skills/scripts",
+        "AGENTS_MD": "AGENTS.md",
+        "MODEL_STRONG": "claude-opus-4-6",
+        "MODEL_GENERAL_PURPOSE": "claude-sonnet-4-6",
+        "MODEL_CHEAP": "claude-haiku-4-5",
+    },
 }
 
 TEMPLATE_DEFAULTS = {
@@ -448,7 +456,7 @@ def main():
                              "remove orphans even if modified")
     parser.add_argument("--source", type=Path, help="Source repo path")
     parser.add_argument("--target", type=Path, required=True,
-                        help="Target directory (e.g. ~/.claude, ~/.pi/agent)")
+                        help="Target directory (e.g. ~/.claude, ~/.pi/agent, ~/.openclaw)")
     parser.add_argument("--tool", choices=list(TOOL_PROFILES.keys()), required=True,
                         help="Target tool profile for template substitution")
     args = parser.parse_args()
