@@ -24,7 +24,7 @@ def _compute_module_path(script_file: str) -> str:
     """Compute module path from script file path.
 
     Args:
-        script_file: Absolute path to script (e.g., ~/.claude/skills/scripts/skills/planner/qr/plan_completeness.py)
+        script_file: Absolute path to script (e.g., ~/<config-root>/skills/scripts/skills/planner/qr/plan_completeness.py)
 
     Returns:
         Module path for -m invocation (e.g., skills.planner.qr.plan_completeness)

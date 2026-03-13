@@ -43,7 +43,7 @@ def validate_state_dir_requirement(step: int, state_dir: str | None) -> None:
     WHY step 1 doesn't require state_dir:
     - Step 1 (init) CREATES the state directory
     - Requiring it as input would be circular dependency
-    - User invokes: /plan -> step 1 creates ~/.claude/plans/xyz/ -> passes to step 2
+    - User invokes: /plan -> step 1 creates ~/.openclaw/plans/xyz/ (or tool-equivalent config root) -> passes to step 2
 
     WHY steps 2+ require state_dir:
     - All workflow state persists in this directory (qa_state.json, plan.md, etc.)

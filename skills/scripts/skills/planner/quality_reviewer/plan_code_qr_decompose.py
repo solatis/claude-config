@@ -36,7 +36,7 @@ Focus on:
 
 OUT OF SCOPE (already verified in plan-docs phase):
   - Documentation quality (temporal contamination, WHY-not-WHAT)
-  - README/CLAUDE.md content
+  - README/project index file content
   - Invisible knowledge coverage"""
 
 

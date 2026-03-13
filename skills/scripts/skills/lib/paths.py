@@ -23,14 +23,27 @@ def get_scripts_dir() -> Path:
 def get_skills_working_dir() -> str:
     """Compute working-dir for invoke directives (relative to HOME).
 
-    Returns path like '.claude/skills/scripts' or '.pi/agent/skills/scripts'
-    depending on where the scripts are installed.
+    Returns path like '.openclaw/skills/scripts', '.pi/agent/skills/scripts',
+    or '.claude/skills/scripts' depending on where scripts are installed.
 
-    Falls back to '.claude/skills/scripts' if the scripts directory is not
-    under HOME (e.g., installed to /opt/). This preserves backward
-    compatibility for non-standard installations.
+    If scripts are not under HOME (e.g., installed to /opt/), prefer an
+    existing known config root under HOME in this order:
+    1. .openclaw/skills/scripts
+    2. .pi/agent/skills/scripts
+    3. .claude/skills/scripts
+
+    If no known root exists, default to '.openclaw/skills/scripts'.
     """
     try:
         return str(_SCRIPTS_DIR.relative_to(Path.home()))
     except ValueError:
-        return ".claude/skills/scripts"
+        fallback_candidates = (
+            ".openclaw/skills/scripts",
+            ".pi/agent/skills/scripts",
+            ".claude/skills/scripts",
+        )
+        home = Path.home()
+        for candidate in fallback_candidates:
+            if (home / candidate).exists():
+                return candidate
+        return ".openclaw/skills/scripts"

@@ -4,7 +4,7 @@
 6-step workflow for technical-writer sub-agent:
   1. Task Description (POST_IMPL type, deliverables)
   2. Extract Plan Information (IK, modified files, milestones)
-  3. CLAUDE.md Index Format (tabular format rules)
+  3. project index file Index Format (tabular format rules)
   4. README.md Creation (creation criteria, IK mapping)
   5. Verify Transcribed Comments (spot-check comment transcription)
   6. Output Format (documentation report)
@@ -20,7 +20,7 @@ from skills.planner.shared.constraints import format_state_banner
 STEPS = {
     1: "Task Description",
     2: "Extract Plan Information",
-    3: "CLAUDE.md Index Format",
+    3: "project index file Index Format",
     4: "README.md Creation Criteria",
     5: "Verify Transcribed Comments",
     6: "Output Format",
@@ -54,7 +54,7 @@ def get_step_guidance(
                 "  - Quality review passed",
                 "",
                 "DELIVERABLES:",
-                "  1. CLAUDE.md index entries for modified directories",
+                "  1. project index file index entries for modified directories",
                 "  2. README.md if Invisible Knowledge has content",
                 "  3. Verification that TW-prepared comments were transcribed",
                 "",
@@ -77,11 +77,11 @@ def get_step_guidance(
                 "",
                 "2. MODIFIED FILE LIST:",
                 "   - From each milestone's ## Files section",
-                "   - Group by directory for CLAUDE.md updates",
+                "   - Group by directory for project index file updates",
                 "",
                 "3. MILESTONE DESCRIPTIONS:",
                 "   - What each milestone accomplished",
-                "   - Use for WHAT column in CLAUDE.md index",
+                "   - Use for WHAT column in project index file index",
                 "",
                 "Write out your extraction before proceeding:",
                 "  EXTRACTION:",
@@ -96,11 +96,11 @@ def get_step_guidance(
         return {
             "title": STEPS[3],
             "actions": [
-                "UPDATE CLAUDE.md for each modified directory.",
+                "UPDATE project index file for each modified directory.",
                 "",
                 "FORMAT (tabular index):",
                 "```markdown",
-                "# CLAUDE.md",
+                "# project index file",
                 "",
                 "## Overview",
                 "",
@@ -121,10 +121,10 @@ def get_step_guidance(
                 "  - Every file in directory should have an entry",
                 "  - Exclude generated files (build artifacts, caches)",
                 "",
-                "IF CLAUDE.md exists but NOT tabular:",
+                "IF project index file exists but NOT tabular:",
                 "  REWRITE completely (do not improve, replace)",
                 "",
-                "FORBIDDEN in CLAUDE.md:",
+                "FORBIDDEN in project index file:",
                 "  - Explanatory prose (-> README.md)",
                 "  - 'Key Invariants', 'Dependencies', 'Constraints' sections",
                 "  - Overview longer than ONE sentence",

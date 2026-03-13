@@ -56,7 +56,7 @@ DISCOVER_INSTRUCTIONS = (
     "\n"
     "MODE 1 DISCOVERY:\n"
     "Before asking the user for arXiv IDs, check for:\n"
-    "  - CLAUDE.md in current directory (may list arXiv IDs)\n"
+    "  - project index file in current directory (may list arXiv IDs)\n"
     "  - README.md or similar docs with arXiv links/IDs\n"
     "  - .bib files with arXiv entries\n"
     "If IDs found, confirm with user: 'Found arXiv ID(s) X, Y. Convert these?'\n"
