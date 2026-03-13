@@ -9,7 +9,7 @@ Higher tiers override lower. Cite backing source when auditing.
 | Tier | Source          | Action                           |
 | ---- | --------------- | -------------------------------- |
 | 1    | user-specified  | Explicit user instruction: apply |
-| 2    | doc-derived     | CLAUDE.md / project docs: apply  |
+| 2    | doc-derived     | project index file / project docs: apply  |
 | 3    | default-derived | This document: apply             |
 | 4    | assumption      | No backing: CONFIRM WITH USER    |
 

@@ -227,7 +227,7 @@ Example:
 
 After plan is written, spawn Developer to convert Code Intent to unified diffs.
 Developer reads actual files and produces accurate context lines.
-See `.claude/conventions/diff-format.md` for diff specification.
+See `conventions/diff-format.md` for diff specification.
 
 ```diff
 --- a/path/to/file.py
@@ -243,7 +243,7 @@ See `.claude/conventions/diff-format.md` for diff specification.
    more_existing_code()
 ```
 
-Documentation-only milestones (ALL files are .md, .rst, .txt, or CLAUDE.md):
+Documentation-only milestones (ALL files are .md, .rst, .txt, or project index file):
 - Code Intent/Changes section states: "Documentation milestone - no code changes."
 - Milestone MUST have `Delegated to:` field (typically `@agent-technical-writer`)
 
@@ -257,7 +257,7 @@ Documentation-only milestones (ALL files are .md, .rst, .txt, or CLAUDE.md):
 
 **Files**:
 
-- `path/to/CLAUDE.md` (index updates -- in same directory as code)
+- `path/to/project index file` (index updates -- in same directory as code)
 - `path/to/README.md` (if Invisible Knowledge section has content -- in same
   directory as code)
 
@@ -265,15 +265,15 @@ Documentation-only milestones (ALL files are .md, .rst, .txt, or CLAUDE.md):
 
 Delegate to Technical Writer. For documentation format specification:
 
-<file working-dir=".claude" uri="conventions/documentation.md" />
+<file working-dir="<config-root>" uri="conventions/documentation.md" />
 
 Key deliverables:
-- CLAUDE.md: Pure navigation index (tabular format)
+- project index file: Pure navigation index (tabular format)
 - README.md: Invisible knowledge (if IK section non-empty)
 
 **Acceptance Criteria**:
 
-- CLAUDE.md is tabular index only (no prose sections)
+- project index file is tabular index only (no prose sections)
 - README.md exists in each directory with invisible knowledge
 - README.md is self-contained (no external references)
 - Architecture diagrams in README.md match plan's Invisible Knowledge section

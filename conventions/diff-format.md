@@ -101,7 +101,7 @@ Comments in `+` lines explain **WHY**, not **WHAT**. These comments:
 - Are transcribed verbatim by Developer
 - Source rationale from Planning Context (Decision Log, Rejected Alternatives)
 - Use concrete terms without hidden baselines
-- Must pass temporal contamination review (see `.claude/conventions/temporal.md`)
+- Must pass temporal contamination review (see `conventions/temporal.md`)
 
 **Important**: Comments written during planning often contain temporal contamination -- change-relative language, baseline references, or location directives. @agent-technical-writer reviews and fixes these before @agent-developer transcribes them.
 
