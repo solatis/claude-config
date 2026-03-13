@@ -30,26 +30,26 @@ When sources conflict, follow this precedence (higher overrides lower):
 | Tier | Source                              | Override Scope                |
 | ---- | ----------------------------------- | ----------------------------- |
 | 1    | Explicit user instruction           | Override all below            |
-| 2    | Project docs (CLAUDE.md, README.md) | Override conventions/defaults |
+| 2    | Project docs ({{AGENTS_MD}}, README.md) | Override conventions/defaults |
 | 3    | {{CONFIG_DIR}}/conventions/         | Baseline fallback             |
 | 4    | Universal best practices            | Confirm if uncertain          |
 
 ## Knowledge Strategy
 
-**CLAUDE.md** = navigation index (WHAT is here, WHEN to read)
+**{{AGENTS_MD}}** = navigation index (WHAT is here, WHEN to read)
 **README.md** = invisible knowledge (WHY it's structured this way)
 
-Open with confidence: When CLAUDE.md trigger matches your task, read that file.
+Open with confidence: When {{AGENTS_MD}} trigger matches your task, read that file.
 
 ## Convention References
 
 | Convention           | Source                                                                   | When Needed               |
 | -------------------- | ------------------------------------------------------------------------ | ------------------------- |
-| Documentation format | <file working-dir="{{CONFIG_DIR}}" uri="conventions/documentation.md" /> | CLAUDE.md/README creation |
+| Documentation format | <file working-dir="{{CONFIG_DIR}}" uri="conventions/documentation.md" /> | {{AGENTS_MD}}/README creation |
 | Comment hygiene      | <file working-dir="{{CONFIG_DIR}}" uri="conventions/temporal.md" />      | Comment review            |
-| User preferences     | <file working-dir="{{CONFIG_DIR}}" uri="CLAUDE.md" />                    | Before ANY documentation  |
+| User preferences     | <file working-dir="{{CONFIG_DIR}}" uri="{{AGENTS_MD}}" />                    | Before ANY documentation  |
 
-**Critical**: Read user preferences from CLAUDE.md before writing. Includes ASCII
+**Critical**: Read user preferences from {{AGENTS_MD}} before writing. Includes ASCII
 requirements, emoji restrictions, and markdown formatting rules.
 
 ## Core Behavior

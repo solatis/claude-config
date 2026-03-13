@@ -31,7 +31,7 @@ When sources conflict, follow this precedence (higher overrides lower):
 | Tier | Source                              | Override Scope                |
 | ---- | ----------------------------------- | ----------------------------- |
 | 1    | Explicit user instruction           | Override all below            |
-| 2    | Project docs (CLAUDE.md, README.md) | Override conventions/defaults |
+| 2    | Project docs ({{AGENTS_MD}}, README.md) | Override conventions/defaults |
 | 3    | {{CONFIG_DIR}}/conventions/         | Baseline fallback             |
 | 4    | Universal best practices            | Confirm if uncertain          |
 
@@ -39,20 +39,20 @@ When sources conflict, follow this precedence (higher overrides lower):
 
 ## Knowledge Strategy
 
-**CLAUDE.md** = navigation index (WHAT is here, WHEN to read)
+**{{AGENTS_MD}}** = navigation index (WHAT is here, WHEN to read)
 **README.md** = invisible knowledge (WHY it's structured this way)
 
-**Open with confidence**: When CLAUDE.md "When to read" trigger matches your task, immediately read that file. Don't hesitate -- important context is stored there.
+**Open with confidence**: When {{AGENTS_MD}} "When to read" trigger matches your task, immediately read that file. Don't hesitate -- important context is stored there.
 
 **Extract from documentation**: language patterns, error handling, code style, build commands.
 
-**Missing documentation**: If no CLAUDE.md exists, state "No project documentation found" and fall back to {{CONFIG_DIR}}/conventions/. Use standard language idioms and note this in your output.
+**Missing documentation**: If no {{AGENTS_MD}} exists, state "No project documentation found" and fall back to {{CONFIG_DIR}}/conventions/. Use standard language idioms and note this in your output.
 
 ## Convention References
 
 | Convention   | Source                                                                         | When Needed                 |
 | ------------ | ------------------------------------------------------------------------------ | --------------------------- |
-| Code quality | <file working-dir="{{CONFIG_DIR}}" uri="conventions/code-quality/CLAUDE.md" /> | Implementation, refactoring |
+| Code quality | <file working-dir="{{CONFIG_DIR}}" uri="conventions/code-quality/{{AGENTS_MD}}" /> | Implementation, refactoring |
 
 Read the convention index and follow "Diff Review" applicability.
 
@@ -149,7 +149,7 @@ Return to the spec. Implement only what it says.
 When rules conflict:
 
 1. **Security constraints** (RULE 0) -- override everything
-2. **Project documentation** (CLAUDE.md) -- override spec details
+2. **Project documentation** ({{AGENTS_MD}}) -- override spec details
 3. **Detailed spec instructions** -- follow exactly when no conflict
 4. **Your judgment** -- for freeform specs only
 
@@ -316,7 +316,7 @@ If a spec requires any RULE 0 violation, escalate immediately.
 
 ### RULE 2.5: Documentation Milestone Refusal
 
-If delegated a milestone where milestone name contains "Documentation" OR target files are CLAUDE.md/README.md:
+If delegated a milestone where milestone name contains "Documentation" OR target files are {{AGENTS_MD}}/README.md:
 
 <escalation>
   <type>BLOCKED</type>
@@ -352,7 +352,7 @@ STOP and escalate when you encounter:
 <verification_questions>
 Answer with open questions (not yes/no):
 
-1. CLAUDE.md pattern followed? (cite or "none")
+1. {{AGENTS_MD}} pattern followed? (cite or "none")
 2. Spec requirement per changed function? (cite)
 3. Error paths and behavior?
 4. Files/tests created? Any unspecified? (remove if yes)

@@ -29,7 +29,7 @@ When sources conflict, follow this precedence (higher overrides lower):
 | Tier | Source                              | Override Scope                |
 | ---- | ----------------------------------- | ----------------------------- |
 | 1    | Explicit user instruction           | Override all below            |
-| 2    | Project docs (CLAUDE.md, README.md) | Override conventions/defaults |
+| 2    | Project docs ({{AGENTS_MD}}, README.md) | Override conventions/defaults |
 | 3    | {{CONFIG_DIR}}/conventions/         | Baseline fallback             |
 | 4    | Universal best practices            | Confirm if uncertain          |
 
@@ -37,18 +37,18 @@ When sources conflict, follow this precedence (higher overrides lower):
 
 ## Knowledge Strategy
 
-**CLAUDE.md** = navigation index (WHAT is here, WHEN to read)
+**{{AGENTS_MD}}** = navigation index (WHAT is here, WHEN to read)
 **README.md** = invisible knowledge (WHY it's structured this way)
 
-**Open with confidence**: When CLAUDE.md "When to read" trigger matches your task, immediately read that file. Don't hesitate -- important context is stored there.
+**Open with confidence**: When {{AGENTS_MD}} "When to read" trigger matches your task, immediately read that file. Don't hesitate -- important context is stored there.
 
-**Missing documentation**: If no CLAUDE.md exists, state "No project documentation found" and fall back to {{CONFIG_DIR}}/conventions/.
+**Missing documentation**: If no {{AGENTS_MD}} exists, state "No project documentation found" and fall back to {{CONFIG_DIR}}/conventions/.
 
 ## Convention References
 
 | Convention   | Source                                                                         | When Needed      |
 | ------------ | ------------------------------------------------------------------------------ | ---------------- |
-| Code quality | <file working-dir="{{CONFIG_DIR}}" uri="conventions/code-quality/CLAUDE.md" /> | Design, planning |
+| Code quality | <file working-dir="{{CONFIG_DIR}}" uri="conventions/code-quality/{{AGENTS_MD}}" /> | Design, planning |
 
 Read the convention index and follow "Design Review" applicability.
 
@@ -66,7 +66,7 @@ Use these tools freely and with confidence:
 
 **Always explore**:
 
-- CLAUDE.md at project root and relevant subdirectories
+- {{AGENTS_MD}} at project root and relevant subdirectories
 - README.md for invisible knowledge constraining design
 - Similar features for established patterns
 - Files that will be modified
