@@ -140,11 +140,11 @@ Exception: Project requires legacy pattern
 <default-conventions domain="testing-strategy">
 **Default Test Type Preferences** (apply when project docs silent):
 
-| Type        | Default Strategy            | Rationale                 |
-| ----------- | --------------------------- | ------------------------- |
-| Unit        | Property-based (quickcheck) | Few tests, many variables |
-| Integration | Behavior-focused, real deps | End-user verifiable       |
-| E2E         | Generated datasets          | Deterministic replay      |
+| Type        | Default Strategy                              | Rationale                 |
+| ----------- | --------------------------------------------- | ------------------------- |
+| Unit        | Property-based (Rantly/PropCheck, fast-check) | Few tests, many variables |
+| Integration | Behavior-focused, real deps                   | End-user verifiable       |
+| E2E         | Generated datasets                            | Deterministic replay      |
 
 These are Tier 3 defaults. User confirmation (Tier 1) overrides.
 

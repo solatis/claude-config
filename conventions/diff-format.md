@@ -9,25 +9,25 @@ Unified diff format encodes both **location** and **content** in a single struct
 ## Anatomy
 
 ```diff
---- a/path/to/file.py
-+++ b/path/to/file.py
-@@ -123,6 +123,15 @@ def existing_function(ctx):
+--- a/path/to/file.rb
++++ b/path/to/file.rb
+@@ -123,6 +123,15 @@ def existing_method(ctx)
     # Context lines (unchanged) serve as location anchors
-    existing_code()
+    existing_code
 
 +   # NEW: Comments explain WHY - transcribed verbatim by Developer
 +   # Guard against race condition when messages arrive out-of-order
-+   new_code()
++   new_code
 
     # More context to anchor the insertion point
-    more_existing_code()
+    more_existing_code
 ```
 
 ## Components
 
 | Component                                  | Authority                 | Purpose                                                    |
 | ------------------------------------------ | ------------------------- | ---------------------------------------------------------- |
-| File path (`--- a/path/to/file.py`)        | **AUTHORITATIVE**         | Exact target file                                          |
+| File path (`--- a/path/to/file.rb`)        | **AUTHORITATIVE**         | Exact target file                                          |
 | Line numbers (`@@ -123,6 +123,15 @@`)      | **APPROXIMATE**           | May drift as earlier milestones modify the file            |
 | Function context (`@@ ... @@ def func():`) | **SCOPE HINT**            | Function/method containing the change                      |
 | Context lines (unchanged)                  | **AUTHORITATIVE ANCHORS** | Developer matches these patterns to locate insertion point |
@@ -143,26 +143,26 @@ Concrete justification that explains why this specific value.
 The diff structure handles location. Location directives in comments are redundant and error-prone.
 
 <example type="INCORRECT" category="location_directive">
-```python
+```ruby
 # Insert this BEFORE the retry loop (line 716)
 # Timestamp guard: prevent older data from overwriting newer
-get_ctx, get_cancel = context.with_timeout(ctx, 500)
+ctx = context.with_timeout(500)
 ```
 Location directive leaked into comment - line numbers become stale.
 </example>
 
 <example type="CORRECT" category="location_directive">
 ```diff
-@@ -714,6 +714,10 @@ def put(self, ctx, tags):
-    for tag in tags:
-        subject = tag.subject
+@@ -714,6 +714,10 @@ def put(ctx, tags)
+    tags.each do |tag|
+      subject = tag.subject
 
 -       # Timestamp guard: prevent older data from overwriting newer
 -       # due to network delays, retries, or concurrent writes
--       get_ctx, get_cancel = context.with_timeout(ctx, 500)
+-       ctx = context.with_timeout(500)
 
-        # Retry loop for Put operations
-        for attempt in range(max_retries):
+      # Retry loop for Put operations
+      max_retries.times do |attempt|
 
 ```
 Context lines (`for tag in tags`, `# Retry loop`) are stable anchors that survive line number drift.
@@ -192,7 +192,7 @@ The boundary test: "Does Developer need to see exact placement and context to im
 
 Before finalizing code changes in a plan:
 
-- [ ] File path is exact (not "auth files" but `src/auth/handler.py`)
+- [ ] File path is exact (not "auth files" but `app/controllers/auth_controller.rb`)
 - [ ] Context lines exist in target file (validate patterns match actual code)
 - [ ] Comments explain WHY, not WHAT
 - [ ] No location directives in comments

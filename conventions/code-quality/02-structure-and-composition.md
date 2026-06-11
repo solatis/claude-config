@@ -91,7 +91,7 @@ Detect: Is the control flow harder to follow than necessary? Would a reader need
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`elif.*elif.*elif`, `switch`, `case`, `? :.*? :`, ternary chains
+`elsif.*elsif.*elsif` (Ruby), `else if.*else if` (TypeScript), `switch`, `case`, `? :.*? :`, ternary chains
 </grep-hints>
 
 <violations>
@@ -169,7 +169,7 @@ Detect: Can I test this function in isolation without mocking infrastructure? Ar
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`datetime.now`, `time.time`, `os.environ`, `open(`, `requests.`, `http.`
+`Time.now`, `Date.new` (Ruby), `new Date()`, `process.env` (TypeScript), `ENV[` (Ruby), `Net::HTTP`, `Faraday`, `HTTParty` (Ruby), `fetch(`, `axios.` (TypeScript)
 </grep-hints>
 
 <violations>
@@ -247,7 +247,7 @@ Detect: What happens if this operation fails? Is error information preserved and
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`except:`, `catch (`, `catch(`, `pass`, `# TODO`, `raise Error(`
+`rescue`, `rescue => e` (Ruby), `catch (`, `catch(` (TypeScript), `throw new Error(`, `raise ` (Ruby)
 </grep-hints>
 
 <violations>
@@ -255,8 +255,8 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [high] Information loss
 
-- Swallowed exceptions (empty catch blocks)
-- Generic catches (e.g., catch Exception -> catch specific errors)
+- Swallowed exceptions (empty rescue/catch blocks)
+- Generic catches (e.g., `rescue StandardError` / `catch (e)` with no handler -> catch specific errors)
 - Any error handling that loses diagnostic information
 
 [medium] Wrong abstraction
@@ -265,7 +265,7 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [low] Missing context
 
-- raise Error('failed') -> raise Error(f'order {id}: {reason}')
+- `raise "failed"` -> `raise OrderError, "order #{id}: #{reason}"` (Ruby) / `throw new Error(\`order ${id}: ${reason}\`)` (TypeScript)
   </violations>
 
 <exceptions>

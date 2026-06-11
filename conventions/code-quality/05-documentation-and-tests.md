@@ -82,7 +82,7 @@ Detect: Do tests communicate expected behavior? Can I understand what's being te
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`test_works`, `test_ok`, `test_success`, `test_case_`, `test_1`, `assert True`
+`it 'works'`, `it 'should work'` (RSpec), `test('works')`, `it('should work')` (Jest/Vitest), `expect(true).toBe(true)` (trivial assertions), `assert true` (Minitest)
 </grep-hints>
 
 <violations>
@@ -90,19 +90,19 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [high] Uninformative tests
 
-- Test name matches low-information pattern (e.g., test_works, test_ok, test_success, test_case_1)
+- Test name matches low-information pattern (e.g., `it 'works'`, `it 'should work'`, `test('ok')`)
 - Test contains 0 assertions
 - Any test where the name gives no behavioral information
 
 [medium] Weak naming
 
-- Test name shorter than 3 tokens (excluding test\_ prefix)
+- Test name shorter than 3 tokens (excluding `it`/`test`/`describe` prefix)
 - Test name describes implementation, not behavior
 
 [low] Test smells
 
-- Test only asserts True, None, or trivial values
-- Multiple similar test functions with minor input variations (use parameterized/table-driven)
+- Test only asserts `true`, `nil`, or trivial values
+- Multiple similar test blocks with minor input variations (use `shared_examples`, parameterized, or `test.each`)
   </violations>
 
 <exceptions>
@@ -123,7 +123,7 @@ Detect: Is non-maintainable code clearly marked in CLAUDE.md? Can a maintainer t
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`_generated`, `_pb`, `.pb.go`, `vendor/`, `third_party/`, `node_modules/`
+`*.generated.ts`, `*.d.ts` (from build), `db/schema.rb` (Rails, managed by migrations), `vendor/`, `node_modules/`
 </grep-hints>
 
 <violations>
@@ -131,7 +131,7 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [high] Missing provenance
 
-- Generated files missing regeneration command in CLAUDE.md
+- Generated files missing regeneration command in CLAUDE.md (e.g., `*.generated.ts` from a codegen script, `db/schema.rb` from `rails db:migrate`)
 - Vendored directories missing upstream source in CLAUDE.md
 - Any generated/vendored code without documentation of origin
 
@@ -145,7 +145,7 @@ Generated files with regeneration command documented. Vendored code with clear u
 </exceptions>
 
 <threshold>
-Flag when file/directory matches generation patterns (e.g., *.pb.go, *_generated.*, vendor/, third_party/) AND CLAUDE.md lacks corresponding entry explaining provenance.
+Flag when file/directory matches generation patterns (e.g., `*.generated.ts`, `*_generated.*`, `db/schema.rb`, `vendor/`, `node_modules/`) AND CLAUDE.md lacks corresponding entry explaining provenance.
 </threshold>
 
 ## 4. Schema-Code Coherence

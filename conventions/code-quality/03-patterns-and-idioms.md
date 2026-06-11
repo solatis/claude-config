@@ -79,7 +79,7 @@ Detect: Is there a simpler way to express this condition that preserves the same
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`if.*return True.*else.*return False`, `try:.*except:.*pass`, `and do_`
+`if.*return true.*else.*return false`, `rescue; end` / empty `catch` block, `&&` side effects
 </grep-hints>
 
 <violations>
@@ -87,14 +87,14 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [medium] Verbose patterns
 
-- if cond: return True else: return False (just return cond)
-- Exception-based control flow (try/except as if/else)
+- `if cond; return true; else; return false; end` (just return cond)
+- Exception-based control flow (rescue/catch as if/else)
 - Any condition with a simpler equivalent form
 
 [low] Subtle complexity
 
-- Short-circuit side effects (e.g., cond and do_thing())
-- Yoda conditions without clear benefit (e.g., if 5 == x)
+- Short-circuit side effects (e.g., `cond && do_thing()`)
+- Yoda conditions without clear benefit (e.g., `if 5 == x`)
   </violations>
 
 <exceptions>
@@ -115,7 +115,7 @@ Detect: Is there a newer language feature that would simplify this code? Is the 
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`for i in range(len(`, `+ str(`, `.format(`, callback patterns, `null` checks
+`.each_with_index`, old-style `for` loops (Ruby), `+ ` string concat (Ruby/TypeScript), `sprintf`/`%` formatting (Ruby), `new Promise(` callback patterns (TypeScript), `nil` checks (Ruby), `null`/`undefined` checks (TypeScript)
 </grep-hints>
 
 <violations>
@@ -123,16 +123,16 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [medium] Outdated patterns
 
-- Old iteration patterns (e.g., manual index loops -> for-each, enumerate)
+- Old iteration patterns (e.g., manual index loops -> `.each`, `.map`, `.each_with_index`)
 - Deprecated API usage
 - Any pattern with a simpler modern equivalent
 
 [low] Missing features
 
 - Missing language features (e.g., no destructuring, no pattern matching)
-- Legacy patterns (e.g., callbacks -> async/await)
-- Outdated idioms (e.g., string concatenation -> f-strings/templates)
-- Manual null checks (-> optional chaining, null coalescing)
+- Legacy patterns (e.g., callbacks -> async/await, Promises -> async/await)
+- Outdated idioms (e.g., string concatenation -> `"#{interpolation}"` / template literals)
+- Manual nil/null checks (-> `&.` safe navigation (Ruby), optional chaining `?.` / `??` (TypeScript))
   </violations>
 
 <exceptions>
@@ -194,7 +194,7 @@ Detect: If I deleted this, would any test fail or behavior change?
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-Commented blocks, `#if 0`, unreachable branches, unused variables
+Commented blocks, `=begin`/`=end` blocks (Ruby), unreachable branches, unused variables
 </grep-hints>
 
 <violations>

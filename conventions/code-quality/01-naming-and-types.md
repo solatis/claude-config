@@ -11,7 +11,7 @@ Evaluate whether names and types accurately communicate intent.
 - Names that describe HOW instead of WHAT
 - Verbs that lie (get that mutates, validate that parses)
 - Missing domain types (primitives where concepts belong)
-- Type-based branching (isinstance chains indicating missing polymorphism)
+- Type-based branching (`is_a?`/`instanceof` chains indicating missing polymorphism)
 - Multiple names for the same concept within a file
 
 **The threshold**: Flag only when name/type actively misleads or when domain concepts are hidden in primitives crossing boundaries. Imperfect-but-accurate names are style preferences, not quality issues.
@@ -31,7 +31,7 @@ When evaluating actual code (Diff Review, Codebase Review, Refactor):
 
 - Does the implementation name match actual behavior?
 - Are domain concepts hidden in primitive comparisons?
-- Are isinstance chains indicating missing polymorphism?
+- Are `is_a?`/`instanceof` chains indicating missing polymorphism?
 
 Evidence format: Quote code with file:line showing the issue.
 </code-mode>
@@ -124,7 +124,7 @@ Detect: Is type-checking being used where polymorphism would be cleaner? Does th
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`isinstance`, `typeof`, `instanceof`, `hasattr`, `in dict`, `.type ==`
+`is_a?`, `kind_of?`, `respond_to?` (Ruby), `instanceof`, `typeof` (TypeScript), `.type ==`
 </grep-hints>
 
 <violations>
@@ -132,20 +132,20 @@ Illustrative patterns (not exhaustive -- similar violations exist):
 
 [high] Scattered dispatch
 
-- isinstance/typeof chains (3+ branches -> polymorphism candidate)
+- `is_a?`/`kind_of?`/`instanceof` chains (3+ branches -> polymorphism candidate)
 - Same type dispatch appearing in multiple locations
 
 [medium] Implicit dispatch
 
-- Attribute-presence checks (e.g., hasattr/in dict as type dispatch)
+- Attribute-presence checks (e.g., `respond_to?` / `in obj` as type dispatch)
 
 [low] Missing abstraction
 
-- Duck typing conditionals that should be protocols/interfaces
+- Duck typing conditionals that should be modules/interfaces
   </violations>
 
 <exceptions>
-Single isinstance check for input validation. Type narrowing for type safety.
+Single `is_a?`/`instanceof` check for input validation. Type narrowing for type safety.
 </exceptions>
 
 <threshold>
@@ -162,7 +162,7 @@ Detect: What domain concepts are represented as primitives? Do primitives cross 
 
 <grep-hints>
 Pattern indicators (starting points, not definitive):
-`str` for IDs, `float` for money, `dict` passed through call chain, `Any`, `object`
+`String` for IDs, `Float`/`Numeric` for money, `Hash` passed through call chain (Ruby), `any`, `unknown`, `Record<string, unknown>` (TypeScript)
 </grep-hints>
 
 <violations>
