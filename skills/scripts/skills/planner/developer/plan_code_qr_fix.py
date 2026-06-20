@@ -20,6 +20,7 @@ Fix scripts separate from execute scripts:
 from skills.planner.shared.constraints import format_state_banner
 from skills.lib.conventions import get_convention
 from skills.planner.shared.resources import validate_state_dir_requirement, get_context_path, render_context_file
+from skills.planner.shared.fix_mode import CLASS_SWEEP_DIRECTIVE, temporal_scan_gate
 from skills.planner.shared.qr.utils import (
     load_qr_state,
     format_failed_items_for_fix,
@@ -68,6 +69,8 @@ def get_step_guidance(
                 "",
                 failed_items_block if failed_items_block else "Read QR report from: STATE_DIR/qr-plan-code.json",
                 "",
+                CLASS_SWEEP_DIRECTIVE,
+                "",
                 "PLANNING CONTEXT (reference for semantic validation):",
                 "",
                 context_display,
@@ -92,8 +95,7 @@ def get_step_guidance(
                 "",
                 "CONTEXT PRESERVATION:",
                 "  - Do NOT remove valid code_changes",
-                "  - Do NOT change unrelated diffs",
-                "  - Focus ONLY on addressing the specific failures",
+                "  - Do NOT change diffs outside the flagged classes",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 2 --state-dir {state_dir}",
         }
@@ -144,7 +146,9 @@ def get_step_guidance(
                 "  Edit the actual file directly using Edit tool.",
                 "  These are issues in existing code that the plan depends on.",
                 "",
-                "CONSTRAINT: Fix ONLY the failing items. Don't refactor passing items.",
+                "CONSTRAINT: Fix EVERY instance of the flagged classes across all",
+                "code_changes (not just the named findings). Don't refactor unrelated,",
+                "passing items.",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 3 --state-dir {state_dir}",
         }
@@ -158,17 +162,21 @@ def get_step_guidance(
                 "Run structural validation:",
                 f"  python3 -m skills.planner.cli.plan validate --phase plan-code --state-dir {state_dir}",
                 "",
+                temporal_scan_gate(state_dir),
+                "",
                 "SELF-CHECK each fixed item:",
                 "  For each FAIL item you addressed:",
                 "    - Does the fix address the specific finding?",
+                "    - Did you sweep ALL code_changes for siblings of that class,",
+                "      or only patch the named instance?",
                 "    - Does the fix introduce new issues?",
                 "    - Are context lines correct (verify against actual file)?",
                 "",
-                "If validation fails or self-check fails:",
+                "If validation, the temporal scan, or self-check fails:",
                 "  - Apply additional fixes",
-                "  - Re-run validation",
+                "  - Re-run validation and the temporal scan",
                 "",
-                "If validation passes:",
+                "If validation passes AND the temporal scan reports zero hits:",
                 "  Your complete response must be exactly: PASS",
                 "  Do not add summaries, explanations, or any other text.",
             ],

@@ -1221,6 +1221,33 @@ class ValidateCommand(Command):
             success(f"Validation passed for phase {args.phase}")
 
 
+class TemporalScanCommand(Command):
+    name = "temporal-scan"
+    help = "Deterministic temporal-contamination scan over the doc/comment surface"
+    role = None
+
+    @classmethod
+    def add_arguments(cls, p: argparse.ArgumentParser) -> None:
+        pass
+
+    @classmethod
+    def run(cls, args: argparse.Namespace) -> None:
+        # F2 post-fix gate: read raw plan.json (not the pydantic model) so the
+        # scan stays robust to deprecated/loose doc fields, then drive the
+        # whole temporal class to zero hits. Exit 1 on any hit so the fixer
+        # cannot report PASS while siblings of a named finding remain.
+        import json
+        from ..shared.temporal_detection import scan_plan_docs, format_scan_report
+
+        state_dir = get_state_dir()
+        plan_raw = json.loads(get_plan_path(state_dir).read_text())
+        hits = scan_plan_docs(plan_raw)
+
+        print(format_scan_report(hits))
+        if hits:
+            sys.exit(1)
+
+
 # =============================================================================
 # Commands: List Helpers (read-only, no role restriction)
 # =============================================================================
@@ -1327,6 +1354,7 @@ COMMANDS: list[type[Command]] = [
     SetDocDiffCommand,
     CreateDocChangeCommand,
     ValidateCommand,
+    TemporalScanCommand,
     ListMilestonesCommand,
     ListIntentsCommand,
     ListChangesCommand,

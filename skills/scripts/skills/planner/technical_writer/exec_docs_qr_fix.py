@@ -14,6 +14,7 @@ Router (exec_docs.py) dispatches to appropriate script.
 from skills.planner.shared.constraints import format_state_banner
 from skills.lib.conventions import get_convention
 from skills.planner.shared.resources import validate_state_dir_requirement
+from skills.planner.shared.fix_mode import CLASS_SWEEP_DIRECTIVE
 from skills.planner.shared.qr.utils import (
     load_qr_state,
     format_failed_items_for_fix,
@@ -29,7 +30,7 @@ STEPS = {
 
 
 def get_step_guidance(
-    step: int) -> dict:
+    step: int, module_path: str = None, **kwargs) -> dict:
     """Return guidance for the given step."""
     MODULE_PATH = module_path or "skills.planner.technical_writer.exec_docs_qr_fix"
     state_dir = kwargs.get("state_dir", "")
@@ -57,9 +58,12 @@ def get_step_guidance(
                 "",
                 failed_items_block if failed_items_block else "Read QR report from: STATE_DIR/qr-impl-docs.json",
                 "",
+                CLASS_SWEEP_DIRECTIVE,
+                "",
                 "For EACH failed item:",
-                "  1. Read the 'finding' field to understand the issue",
-                "  2. Identify what documentation needs to change",
+                "  1. Read the 'finding' field to understand the issue and its CLASS",
+                "  2. Identify what documentation needs to change -- and every other",
+                "     instance of that class across the docs you touched",
                 "  3. Note the fix approach for step 2",
                 "",
                 "COMMON ISSUE TYPES:",
@@ -70,7 +74,8 @@ def get_step_guidance(
                 "",
                 "CONTEXT PRESERVATION:",
                 "  - Do NOT remove valid documentation",
-                "  - Focus ONLY on addressing the specific failures",
+                "  - Fix every instance of the flagged classes; do NOT refactor",
+                "    unrelated, passing docs",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 2 --state-dir {state_dir}",
         }
@@ -96,6 +101,8 @@ def get_step_guidance(
                 "",
                 "Temporal contamination:",
                 "  - Rewrite comments to remove change-relative language",
+                "  - Sweep ALL touched docs/comments for the same pattern, not",
+                "    just the flagged line",
                 "",
                 "Missing README.md:",
                 "  - Create README.md with IK content",
@@ -104,7 +111,8 @@ def get_step_guidance(
                 "TEMPORAL REFERENCE:",
                 temporal_resource,
                 "",
-                "CONSTRAINT: Fix ONLY the failing items. Don't refactor passing docs.",
+                "CONSTRAINT: Fix EVERY instance of the flagged classes (not just the",
+                "named findings). Don't refactor unrelated, passing docs.",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 3 --state-dir {state_dir}",
         }
@@ -118,6 +126,8 @@ def get_step_guidance(
                 "SELF-CHECK each fixed item:",
                 "  For each FAIL item you addressed:",
                 "    - Does the fix address the specific finding?",
+                "    - Did you sweep all touched docs for siblings of that class,",
+                "      or only patch the named instance?",
                 "    - CLAUDE.md: Is it now tabular format?",
                 "    - IK: Is it now adjacent to relevant code?",
                 "    - Comments: Are they free of temporal contamination?",

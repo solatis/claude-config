@@ -27,6 +27,7 @@ Router (plan_docs.py) dispatches to appropriate script.
 from skills.planner.shared.constraints import format_state_banner
 from skills.lib.conventions import get_convention
 from skills.planner.shared.resources import validate_state_dir_requirement, get_context_path, render_context_file
+from skills.planner.shared.fix_mode import CLASS_SWEEP_DIRECTIVE, temporal_scan_gate
 from skills.planner.shared.qr.utils import (
     load_qr_state,
     format_failed_items_for_fix,
@@ -74,6 +75,8 @@ def get_step_guidance(
                 "",
                 failed_items_block if failed_items_block else "Read QR report from: STATE_DIR/qr-plan-docs.json",
                 "",
+                CLASS_SWEEP_DIRECTIVE,
+                "",
                 "PLANNING CONTEXT (reference for semantic validation):",
                 "",
                 context_display,
@@ -99,8 +102,7 @@ def get_step_guidance(
                 "",
                 "CONTEXT PRESERVATION:",
                 "  - Do NOT remove valid documentation",
-                "  - Do NOT change unrelated sections",
-                "  - Focus ONLY on addressing the specific failures",
+                "  - Do NOT change sections outside the flagged classes",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 2 --state-dir {state_dir}",
         }
@@ -145,7 +147,10 @@ def get_step_guidance(
                 "TEMPORAL REFERENCE:",
                 temporal_resource,
                 "",
-                "CONSTRAINT: Fix ONLY the failing items. Don't refactor passing items.",
+                "CONSTRAINT: Fix EVERY instance of the flagged classes across all",
+                "doc_diffs (not just the named findings). For temporal contamination,",
+                "sweep the whole doc surface -- the scan in step 3 enforces zero hits.",
+                "Don't refactor unrelated, passing items.",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 3 --state-dir {state_dir}",
         }
@@ -159,17 +164,21 @@ def get_step_guidance(
                 "Run documentation validation:",
                 f"  python3 -m skills.planner.cli.plan validate --phase plan-docs --state-dir {state_dir}",
                 "",
+                temporal_scan_gate(state_dir),
+                "",
                 "SELF-CHECK each fixed item:",
                 "  For each FAIL item you addressed:",
                 "    - Does the fix address the specific finding?",
+                "    - Did you sweep the WHOLE doc surface for siblings of that",
+                "      class, or only patch the named instance?",
                 "    - Does the fix introduce new temporal contamination?",
                 "    - Are decision_refs valid?",
                 "",
-                "If validation fails or self-check fails:",
+                "If validation, the temporal scan, or self-check fails:",
                 "  - Apply additional fixes",
-                "  - Re-run validation",
+                "  - Re-run validation and the temporal scan",
                 "",
-                "If validation passes:",
+                "If validation passes AND the temporal scan reports zero hits:",
                 "  Your complete response must be exactly: PASS",
                 "  Do not add summaries, explanations, or any other text.",
             ],
