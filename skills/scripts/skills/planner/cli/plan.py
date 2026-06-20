@@ -1253,6 +1253,37 @@ class ValidateCommand(Command):
             success(f"Validation passed for phase {args.phase}")
 
 
+class ValidatePlanningContextCommand(Command):
+    name = "validate-planning-context"
+    help = "F6: validate planning_context shape with self-correctable errors"
+    role = None
+
+    @classmethod
+    def add_arguments(cls, p: argparse.ArgumentParser) -> None:
+        pass
+
+    @classmethod
+    def run(cls, args: argparse.Namespace) -> None:
+        # Read RAW plan.json (not load_plan) so a malformed planning_context
+        # yields friendly, targeted errors instead of a pydantic traceback --
+        # this is the whole point of F6: catch shape drift in the architect
+        # step and feed it back for self-correction.
+        import json
+        from ..shared.schema import validate_planning_context
+
+        state_dir = get_state_dir()
+        plan_raw = json.loads(get_plan_path(state_dir).read_text())
+        errors = validate_planning_context(plan_raw.get("planning_context", {}))
+
+        if errors:
+            print("<planning_context_errors>")
+            for err in errors:
+                print(f"  <error>{err}</error>")
+            print("</planning_context_errors>")
+            sys.exit(1)
+        success("planning_context shape is valid")
+
+
 class TemporalScanCommand(Command):
     name = "temporal-scan"
     help = "Deterministic temporal-contamination scan over the doc/comment surface"
@@ -1386,6 +1417,7 @@ COMMANDS: list[type[Command]] = [
     SetDocDiffCommand,
     CreateDocChangeCommand,
     ValidateCommand,
+    ValidatePlanningContextCommand,
     TemporalScanCommand,
     ListMilestonesCommand,
     ListIntentsCommand,

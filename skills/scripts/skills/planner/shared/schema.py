@@ -459,6 +459,56 @@ if PYDANTIC_AVAILABLE:
     }
 
 
+def validate_planning_context(pc: dict) -> list[str]:
+    """Validate a planning_context dict's SHAPE, returning friendly errors (F6).
+
+    The architect emitted planning_context in a richer shape than the schema
+    (constraints as dicts not strings; rejected_alternatives missing required
+    rejection_reason/decision_ref) -> 10 raw pydantic errors that blocked a
+    downstream --step N until hand-coerced. This validator runs on the RAW dict
+    (so it works even when a full Plan.model_validate would crash) and returns
+    targeted, self-correctable messages instead of a traceback.
+
+    Returns an empty list when the shape is valid.
+    """
+    errors: list[str] = []
+    if not isinstance(pc, dict):
+        return ["planning_context must be a JSON object"]
+
+    # constraints: list[str] (INTENT.md line 67). Dicts are the common drift.
+    constraints = pc.get("constraints", [])
+    if not isinstance(constraints, list):
+        errors.append("planning_context.constraints must be a list of strings")
+    else:
+        for i, c in enumerate(constraints):
+            if not isinstance(c, str):
+                errors.append(
+                    f"planning_context.constraints[{i}] must be a string, got "
+                    f"{type(c).__name__} -- flatten it to a plain sentence"
+                )
+
+    # rejected_alternatives[*]: each needs rejection_reason + decision_ref.
+    rejected = pc.get("rejected_alternatives", [])
+    if not isinstance(rejected, list):
+        errors.append("planning_context.rejected_alternatives must be a list")
+    else:
+        for i, ra in enumerate(rejected):
+            if not isinstance(ra, dict):
+                errors.append(
+                    f"planning_context.rejected_alternatives[{i}] must be an object "
+                    "with alternative/rejection_reason/decision_ref"
+                )
+                continue
+            for field in ("rejection_reason", "decision_ref"):
+                if not ra.get(field):
+                    errors.append(
+                        f"planning_context.rejected_alternatives[{i}] "
+                        f"missing required '{field}'"
+                    )
+
+    return errors
+
+
 def validate_state(state_dir: str) -> None:
     """Validate all state files in state_dir.
 
@@ -503,6 +553,7 @@ if PYDANTIC_AVAILABLE:
         "PYDANTIC_AVAILABLE",
         "SchemaValidationError",
         "validate_state",
+        "validate_planning_context",
         # QR constants
         "QA_ITEM_DEFAULTS", "QA_ITEM_REQUIRED_FIELDS", "QA_ITEM_OPTIONAL_FIELDS",
         "QA_ITEM_ALL_FIELDS", "QA_ITEM_SCHEMA_TEMPLATE", "get_qa_state_schema_example",
@@ -519,6 +570,7 @@ else:
         "PYDANTIC_AVAILABLE",
         "SchemaValidationError",
         "validate_state",
+        "validate_planning_context",
         "QA_ITEM_DEFAULTS", "QA_ITEM_REQUIRED_FIELDS", "QA_ITEM_OPTIONAL_FIELDS",
         "QA_ITEM_ALL_FIELDS", "QA_ITEM_SCHEMA_TEMPLATE", "get_qa_state_schema_example",
     ]
