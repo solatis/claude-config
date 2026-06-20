@@ -244,6 +244,49 @@ def get_qr_iteration(state_dir: str, phase: str) -> int:
     return qr_state.get("iteration", 1)
 
 
+def classify_item_convergence(item: dict, cap: int | None = None) -> str:
+    """Classify a FAIL item by its per-item fix<->verify history (F5).
+
+    Returns one of:
+      - "accepted":    already auto-accepted on a prior pass (no longer blocks)
+      - "retry":       fail_count < cap -- normal fix loop
+      - "escalate":    MUST item at/over cap -- needs ONE human decision
+      - "auto_accept": SHOULD/COULD item at/over cap -- accept with rationale
+
+    WHY per-item (not just global iteration): the global de-escalation in
+    get_blocking_severities() drops whole severities by iteration, but a single
+    stubborn MUST item could still loop forever and a SHOULD item kept failing
+    while OTHER items reset the loop never decayed. Tracking fail_count per item
+    guarantees no item loops more than `cap` times without resolution.
+    """
+    from skills.planner.shared.qr.constants import get_convergence_cap
+    if cap is None:
+        cap = get_convergence_cap()
+    if item.get("accepted"):
+        return "accepted"
+    fail_count = item.get("fail_count", 0)
+    if fail_count < cap:
+        return "retry"
+    severity = item.get("severity", "SHOULD")
+    return "escalate" if severity == "MUST" else "auto_accept"
+
+
+def convergence_partition(qr_state: dict, cap: int | None = None) -> dict:
+    """Partition FAIL items by convergence class (F5).
+
+    Returns {"retry": [...], "escalate": [...], "auto_accept": [...]}.
+    "accepted" items are excluded entirely (they no longer participate).
+    """
+    buckets = {"retry": [], "escalate": [], "auto_accept": []}
+    if not qr_state:
+        return buckets
+    for item in query_items(qr_state, by_status("FAIL")):
+        cls = classify_item_convergence(item, cap)
+        if cls in buckets:
+            buckets[cls].append(item)
+    return buckets
+
+
 def has_qr_failures(state_dir: str, phase: str) -> bool:
     """Check if QR state has blocking failures at current iteration.
 
@@ -255,18 +298,78 @@ def has_qr_failures(state_dir: str, phase: str) -> bool:
     - Gate step receives --qr-status pass
     - Below-threshold items remain FAIL in state (no auto-pass)
 
+    F5 convergence guard: an item that has already been auto-accepted, or a
+    SHOULD/COULD item that has failed >= cap times (auto_accept class), no
+    longer blocks -- otherwise a single stubborn item loops forever. MUST items
+    past the cap still block here, but the route gate escalates them to one
+    human decision rather than silently re-looping.
+
     Args:
         state_dir: Path to state directory
         phase: QR phase name (plan-design, plan-code, plan-docs, impl-code, impl-docs)
 
     Returns:
-        True if qr-{phase}.json has FAIL items at blocking severity
+        True if qr-{phase}.json has blocking, non-converged FAIL items
     """
     qr_state = load_qr_state(state_dir, phase)
     if not qr_state:
         return False
     iteration = qr_state.get("iteration", 1)
-    return len(query_items(qr_state, by_status("FAIL"), by_blocking_severity(iteration))) > 0
+    blocking = query_items(qr_state, by_status("FAIL"), by_blocking_severity(iteration))
+    # Drop items that have converged out of the loop (accepted / auto-acceptable).
+    non_converged = [
+        it for it in blocking
+        if classify_item_convergence(it) not in ("accepted", "auto_accept")
+    ]
+    return len(non_converged) > 0
+
+
+def get_escalations(state_dir: str, phase: str, cap: int | None = None) -> list[dict]:
+    """Return FAIL items needing a human decision (MUST past cap) (F5)."""
+    qr_state = load_qr_state(state_dir, phase)
+    return convergence_partition(qr_state, cap)["escalate"]
+
+
+def record_auto_accepts(state_dir: str, phase: str, cap: int | None = None) -> list[dict]:
+    """Mark SHOULD/COULD items past the cap as accepted-with-rationale (F5).
+
+    Mutates qr-{phase}.json: sets accepted=True and an acceptance_reason on each
+    auto_accept item so the decision is auditable and the item stops blocking.
+    Returns the list of items accepted (for logging). No-op if none.
+    """
+    import os
+    import tempfile
+
+    qr_state = load_qr_state(state_dir, phase)
+    if not qr_state:
+        return []
+    to_accept = convergence_partition(qr_state, cap)["auto_accept"]
+    if not to_accept:
+        return []
+
+    from skills.planner.shared.qr.constants import get_convergence_cap
+    cap_val = cap if cap is not None else get_convergence_cap()
+    accepted_ids = {it.get("id") for it in to_accept}
+    for item in qr_state.get("items", []):
+        if item.get("id") in accepted_ids:
+            item["accepted"] = True
+            item["acceptance_reason"] = (
+                f"Auto-accepted after {item.get('fail_count', 0)} fix attempts "
+                f"(>= cap {cap_val}); severity {item.get('severity', 'SHOULD')} "
+                "is non-blocking past the convergence cap (F5)."
+            )
+
+    path = Path(state_dir) / f"qr-{phase}.json"
+    fd, tmp_path = tempfile.mkstemp(dir=state_dir, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            json.dump(qr_state, tmp, indent=2)
+        os.rename(tmp_path, str(path))
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+    return to_accept
 
 
 def qr_file_exists(state_dir: str, phase: str) -> bool:

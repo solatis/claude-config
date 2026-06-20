@@ -634,13 +634,36 @@ class SetChangeCommand(Command):
         p.add_argument("--milestone", required=True, help="Parent milestone ID")
         p.add_argument("--intent-ref", help="Intent ID this implements")
         p.add_argument("--file", help="Changed file path (required for create)")
-        p.add_argument("--diff", help="Diff content (required for create)")
+        p.add_argument("--diff", help="Diff content (required for create unless snippets given)")
+        p.add_argument("--old-snippet", help="F4: exact current text to replace; @@ headers computed by tool")
+        p.add_argument("--new-snippet", help="F4: replacement text; pair with --old-snippet")
         p.add_argument("--comments", help="Change-level comments")
+
+    @staticmethod
+    def _diff_from_snippets(file: str, old_snippet: str, new_snippet: str) -> str:
+        """F4: compute the unified diff deterministically from snippets.
+
+        Reads the current file from cwd when present so the @@ headers anchor to
+        real line numbers; the LLM never authors them.
+        """
+        from ..shared.diffgen import build_unified_diff
+        try:
+            file_text = Path(file).read_text()
+        except (OSError, ValueError):
+            file_text = None  # plan-time: file may not exist / be readable
+        return build_unified_diff(file, old_snippet, new_snippet, file_text)
 
     @classmethod
     def run(cls, args: argparse.Namespace) -> None:
         state_dir = get_state_dir()
         plan = load_plan(state_dir)
+
+        # F4: snippets are the source of truth when provided; tool computes diff.
+        use_snippets = args.old_snippet is not None or args.new_snippet is not None
+        if use_snippets and (args.old_snippet is None or args.new_snippet is None):
+            error_exit("--old-snippet and --new-snippet must be provided together")
+        if use_snippets and args.diff:
+            error_exit("pass snippets OR --diff, not both (diff is computed from snippets)")
 
         ms = plan.get_milestone(args.milestone)
         if not ms:
@@ -675,7 +698,11 @@ class SetChangeCommand(Command):
                 cc.intent_ref = args.intent_ref if args.intent_ref else None
             if args.file:
                 cc.file = args.file
-            if args.diff:
+            if use_snippets:
+                cc.old_snippet = args.old_snippet
+                cc.new_snippet = args.new_snippet
+                cc.diff = cls._diff_from_snippets(cc.file, args.old_snippet, args.new_snippet)
+            elif args.diff:
                 cc.diff = args.diff
             if args.comments is not None:
                 cc.comments = args.comments
@@ -688,10 +715,13 @@ class SetChangeCommand(Command):
             # CREATE path
             if args.version is not None:
                 error_exit("--version only valid for updates (when --id provided)")
-            if not args.file or not args.diff:
-                error_exit("--file and --diff required for create")
+            if not args.file or not (args.diff or use_snippets):
+                error_exit("--file and (--diff OR --old-snippet/--new-snippet) required for create")
 
-            diff_content = args.diff
+            if use_snippets:
+                diff_content = cls._diff_from_snippets(args.file, args.old_snippet, args.new_snippet)
+            else:
+                diff_content = args.diff
 
             num = len(ms.code_changes) + 1
             ccid = f"CC-{ms.id}-{num:03d}"
@@ -702,6 +732,8 @@ class SetChangeCommand(Command):
                 intent_ref=args.intent_ref,
                 file=args.file,
                 diff=diff_content,
+                old_snippet=args.old_snippet or "" if use_snippets else "",
+                new_snippet=args.new_snippet or "" if use_snippets else "",
                 comments=args.comments or "",
             )
             ms.code_changes.append(cc)
@@ -1221,6 +1253,64 @@ class ValidateCommand(Command):
             success(f"Validation passed for phase {args.phase}")
 
 
+class ValidatePlanningContextCommand(Command):
+    name = "validate-planning-context"
+    help = "F6: validate planning_context shape with self-correctable errors"
+    role = None
+
+    @classmethod
+    def add_arguments(cls, p: argparse.ArgumentParser) -> None:
+        pass
+
+    @classmethod
+    def run(cls, args: argparse.Namespace) -> None:
+        # Read RAW plan.json (not load_plan) so a malformed planning_context
+        # yields friendly, targeted errors instead of a pydantic traceback --
+        # this is the whole point of F6: catch shape drift in the architect
+        # step and feed it back for self-correction.
+        import json
+        from ..shared.schema import validate_planning_context
+
+        state_dir = get_state_dir()
+        plan_raw = json.loads(get_plan_path(state_dir).read_text())
+        errors = validate_planning_context(plan_raw.get("planning_context", {}))
+
+        if errors:
+            print("<planning_context_errors>")
+            for err in errors:
+                print(f"  <error>{err}</error>")
+            print("</planning_context_errors>")
+            sys.exit(1)
+        success("planning_context shape is valid")
+
+
+class TemporalScanCommand(Command):
+    name = "temporal-scan"
+    help = "Deterministic temporal-contamination scan over the doc/comment surface"
+    role = None
+
+    @classmethod
+    def add_arguments(cls, p: argparse.ArgumentParser) -> None:
+        pass
+
+    @classmethod
+    def run(cls, args: argparse.Namespace) -> None:
+        # F2 post-fix gate: read raw plan.json (not the pydantic model) so the
+        # scan stays robust to deprecated/loose doc fields, then drive the
+        # whole temporal class to zero hits. Exit 1 on any hit so the fixer
+        # cannot report PASS while siblings of a named finding remain.
+        import json
+        from ..shared.temporal_detection import scan_plan_docs, format_scan_report
+
+        state_dir = get_state_dir()
+        plan_raw = json.loads(get_plan_path(state_dir).read_text())
+        hits = scan_plan_docs(plan_raw)
+
+        print(format_scan_report(hits))
+        if hits:
+            sys.exit(1)
+
+
 # =============================================================================
 # Commands: List Helpers (read-only, no role restriction)
 # =============================================================================
@@ -1327,6 +1417,8 @@ COMMANDS: list[type[Command]] = [
     SetDocDiffCommand,
     CreateDocChangeCommand,
     ValidateCommand,
+    ValidatePlanningContextCommand,
+    TemporalScanCommand,
     ListMilestonesCommand,
     ListIntentsCommand,
     ListChangesCommand,

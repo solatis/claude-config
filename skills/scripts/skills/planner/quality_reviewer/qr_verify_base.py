@@ -39,6 +39,28 @@ from skills.planner.shared.resources import get_context_path, render_context_fil
 CLI_MODULE = "skills.planner.cli.qr"
 
 
+# Plan-phase verifiers judge a PLAN, not an applied implementation (F3).
+# A correct plan describes intended changes against the CURRENT working tree:
+# nobody `git apply`s its hunks and the tree is intentionally un-migrated.
+# Verifying it like implementation code produced false FAILs ("params still
+# synchronous", "@@ offsets not git-apply-clean"). Plan-phase checks must judge
+# INTENT FIDELITY -- does the diff correctly DESCRIBE the change against the
+# current file -- and treat line-number arithmetic as advisory. Byte-exact /
+# git-apply-clean checks belong to the exec/impl phase, where diffs are applied.
+PLAN_INTENT_FIDELITY_NOTE = [
+    "PLAN-PHASE SCOPE (intent fidelity, not applied state):",
+    "  - This is a PLAN. The working tree is intentionally NOT migrated yet,",
+    "    so do NOT FAIL because the file 'still' shows the pre-change state --",
+    "    that is expected. Judge whether the diff correctly DESCRIBES the",
+    "    intended change against the CURRENT file content.",
+    "  - @@ line numbers are ADVISORY here. NEVER FAIL on offset arithmetic or",
+    "    git-apply-cleanliness; that is the exec/impl phase's job.",
+    "  - FAIL only when the diff MIS-describes the change: wrong file, wrong",
+    "    transform, or context lines that do not exist in the current file.",
+    "",
+]
+
+
 class VerifyBase(ABC):
     """Base class for QR verify scripts.
 

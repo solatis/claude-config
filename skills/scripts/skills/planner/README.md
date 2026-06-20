@@ -17,7 +17,7 @@ QR PASS/FAIL is determined by LLM reading QR output, not Python. Gate routing is
 
 ## State Files
 
-All state mutations (except initial context.json) happen via Python CLI commands. State directory created via `tempfile.mkdtemp()` in `/tmp`.
+All state mutations (except initial context.json) happen via Python CLI commands. Step 1 honors an explicit `--state-dir` (resumable); otherwise it mints a fresh persistent directory under `<project>/.claude/planner-state/` (git-ignored) -- never `/tmp`, which a session-limit restart would wipe (F1).
 
 | File              | Schema         | Created     | Mutated By     | Lifecycle              |
 | ----------------- | -------------- | ----------- | -------------- | ---------------------- |

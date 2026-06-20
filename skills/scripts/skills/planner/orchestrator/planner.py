@@ -23,7 +23,6 @@ QR Block Pattern (4 steps per phase):
 
 import argparse
 import sys
-import tempfile
 from datetime import datetime
 
 from skills.lib.workflow.types import AgentRole, Dispatch
@@ -125,8 +124,11 @@ def init_step(title, actions):
     def handler(ctx):
         import json
         from pathlib import Path
+        from skills.planner.shared.resources import create_state_dir
 
-        state_dir = tempfile.mkdtemp(prefix="planner-")
+        # Honor an explicit --state-dir (resumable); otherwise mint a fresh
+        # persistent dir under .claude/planner-state/ -- never /tmp (F1).
+        state_dir = create_state_dir(ctx.get("state_dir"))
 
         plan_skeleton = {
             "schema_version": 2,
@@ -145,8 +147,12 @@ def init_step(title, actions):
             "milestones": [],
             "waves": [],
         }
+        # Resume-safe: never clobber an existing plan.json. Re-running step 1
+        # against a populated --state-dir (e.g. after a restart) must preserve
+        # prior work, not reset it to the skeleton (F1).
         plan_path = Path(state_dir) / "plan.json"
-        plan_path.write_text(json.dumps(plan_skeleton, indent=2))
+        if not plan_path.exists():
+            plan_path.write_text(json.dumps(plan_skeleton, indent=2))
 
         print(f"STATE_DIR={state_dir}")
 
@@ -408,9 +414,24 @@ def qr_route_step(title, phase, work_step, pass_step, pass_message, fix_target=N
     FAIL: loop to work_step (fix mode detected via qr-{phase}.json inspection)
     """
     def handler(ctx):
+        from skills.planner.shared.qr.utils import get_escalations, record_auto_accepts
+
         qr = ctx["qr"]
         state_dir = ctx.get("state_dir", "")
         step = ctx["step"]
+
+        # F5 convergence guard: before routing a FAIL back into the fix loop,
+        # auto-accept SHOULD/COULD items past the per-item cap (recorded with
+        # rationale, logged) and collect MUST items past the cap for escalation.
+        escalations = []
+        if state_dir and not qr.passed:
+            accepted = record_auto_accepts(state_dir, phase)
+            for it in accepted:
+                print(
+                    f"[F5] auto-accepted {it.get('id')} "
+                    f"({it.get('severity', 'SHOULD')}, {it.get('fail_count', 0)} fails)"
+                )
+            escalations = get_escalations(state_dir, phase)
 
         return build_gate_output(
             module_path=MODULE_PATH,
@@ -423,6 +444,8 @@ def qr_route_step(title, phase, work_step, pass_step, pass_message, fix_target=N
             pass_message=pass_message,
             fix_target=fix_target,
             state_dir=state_dir,
+            escalations=escalations,
+            phase=phase,
         )
 
     handler.phase = phase

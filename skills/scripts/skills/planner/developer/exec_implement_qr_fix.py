@@ -13,6 +13,7 @@ Router (exec_implement.py) dispatches to appropriate script.
 
 from skills.planner.shared.constraints import format_state_banner
 from skills.planner.shared.resources import validate_state_dir_requirement
+from skills.planner.shared.fix_mode import CLASS_SWEEP_DIRECTIVE
 from skills.planner.shared.qr.utils import (
     load_qr_state,
     format_failed_items_for_fix,
@@ -28,7 +29,7 @@ STEPS = {
 
 
 def get_step_guidance(
-    step: int) -> dict:
+    step: int, module_path: str = None, **kwargs) -> dict:
     """Return guidance for the given step."""
     MODULE_PATH = module_path or "skills.planner.developer.exec_implement_qr_fix"
     state_dir = kwargs.get("state_dir", "")
@@ -56,9 +57,12 @@ def get_step_guidance(
                 "",
                 failed_items_block if failed_items_block else "Read QR report from: STATE_DIR/qr-impl-code.json",
                 "",
+                CLASS_SWEEP_DIRECTIVE,
+                "",
                 "For EACH failed item:",
-                "  1. Read the 'finding' field to understand the issue",
-                "  2. Identify what in the codebase needs to change",
+                "  1. Read the 'finding' field to understand the issue and its CLASS",
+                "  2. Identify what in the codebase needs to change -- and every other",
+                "     instance of that class across the files you touched",
                 "  3. Note the fix approach for step 2",
                 "",
                 "COMMON ISSUE TYPES:",
@@ -68,8 +72,8 @@ def get_step_guidance(
                 "  - Missing error handling",
                 "",
                 "CONTEXT PRESERVATION:",
-                "  - Do NOT refactor unrelated code",
-                "  - Focus ONLY on addressing the specific failures",
+                "  - Fix every instance of the flagged classes; do NOT refactor",
+                "    unrelated, passing code",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 2 --state-dir {state_dir}",
         }
@@ -88,14 +92,16 @@ def get_step_guidance(
                 "",
                 "Temporal contamination:",
                 "  - Rewrite comments to remove change-relative language",
-                "  - Use Edit tool on source files",
+                "  - Sweep ALL touched files for the same pattern, not just the",
+                "    flagged line -- use Edit tool on source files",
                 "",
                 "Structural issues:",
                 "  - Extract functions if >50 lines",
                 "  - Remove duplicate logic",
                 "  - Add missing error handling",
                 "",
-                "CONSTRAINT: Fix ONLY the failing items. Don't refactor passing code.",
+                "CONSTRAINT: Fix EVERY instance of the flagged classes (not just the",
+                "named findings). Don't refactor unrelated, passing code.",
             ],
             "next": f"python3 -m {MODULE_PATH} --step 3 --state-dir {state_dir}",
         }
@@ -112,6 +118,8 @@ def get_step_guidance(
                 "SELF-CHECK each fixed item:",
                 "  For each FAIL item you addressed:",
                 "    - Does the fix address the specific finding?",
+                "    - Did you sweep all touched files for siblings of that class,",
+                "      or only patch the named instance?",
                 "    - Does the fix pass tests?",
                 "    - Does the fix introduce new issues?",
                 "",

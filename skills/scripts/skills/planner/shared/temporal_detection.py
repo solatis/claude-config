@@ -6,8 +6,16 @@ WHY: Detection questions were duplicated in two places:
 
 Both need the same criteria but different formats. This module
 defines the criteria once and provides formatters for each use case.
+
+It also provides a DETERMINISTIC scanner (scan_text) used as a post-fix
+gate (F2 in PLANNER-HARNESS-FIX-ROADMAP.md): the temporal class was a
+whack-a-mole during QR fix loops because the fixer patched only the named
+findings, leaving sibling instances for the next verify pass to re-surface.
+A deterministic scan the fixer must pass with ZERO hits before reporting
+PASS closes the whole class in one iteration.
 """
 
+import re
 from dataclasses import dataclass
 
 @dataclass
@@ -94,4 +102,109 @@ def format_actions() -> str:
     lines = []
     for q in TEMPORAL_DETECTION_QUESTIONS:
         lines.append(f"  - {q.id}: {q.action}")
+    return "\n".join(lines)
+
+
+# =============================================================================
+# Deterministic scanner (post-fix gate)
+# =============================================================================
+
+
+@dataclass
+class TemporalHit:
+    """One detected temporal-contamination signal."""
+    field: str       # where it was found (e.g. "CC-M-001-001.doc_diff")
+    line_no: int     # 1-based line within that field's text
+    question_id: str  # which DetectionQuestion fired
+    signal: str      # the literal signal phrase matched
+    text: str        # the offending line (stripped)
+
+
+# Precompiled word-boundary patterns per signal. Word boundaries keep the scan
+# from firing inside larger tokens (e.g. "Will" must not match "Willing");
+# case-insensitive because comment prose varies.
+_SIGNAL_PATTERNS = [
+    (q.id, signal, re.compile(rf"\b{re.escape(signal)}\b", re.IGNORECASE))
+    for q in TEMPORAL_DETECTION_QUESTIONS
+    for signal in q.signals
+]
+
+
+def scan_text(text: str, field: str = "") -> list[TemporalHit]:
+    """Scan free text for temporal-contamination signals.
+
+    Deterministic counterpart to the LLM detection questions: returns one hit
+    per (line, signal) match. Used as the F2 post-fix gate -- the fixer must
+    drive this to zero hits over the documentation/comment surface before
+    reporting PASS, which forces a whole-class sweep instead of patching only
+    the QR-named instances.
+    """
+    hits: list[TemporalHit] = []
+    if not text:
+        return hits
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        for question_id, signal, pattern in _SIGNAL_PATTERNS:
+            if pattern.search(line):
+                hits.append(TemporalHit(
+                    field=field,
+                    line_no=line_no,
+                    question_id=question_id,
+                    signal=signal,
+                    text=line.strip(),
+                ))
+    return hits
+
+
+def scan_plan_docs(plan: dict) -> list[TemporalHit]:
+    """Scan the documentation/comment surface of a plan.json dict.
+
+    Scopes the scan to fields that hold prose destined to become code
+    comments or docs -- where timeless present tense is required. These live
+    on each milestone:
+      - code_changes[].doc_diff, .comments, and the ADDED ("+") lines of
+        .diff (context/removed lines are not ours to own)
+      - documentation.module_comment
+      - documentation.function_blocks[].comment
+      - documentation.inline_comments[].comment
+      - documentation.docstrings[].docstring
+
+    Deliberately EXCLUDES decision/rejection reasoning (planning_context),
+    where words like "chose"/"deliberately" are legitimate and expected --
+    scanning those would false-fire and defeat the gate.
+    """
+    hits: list[TemporalHit] = []
+    for ms in plan.get("milestones", []) or []:
+        mid = ms.get("id", "?")
+        for change in ms.get("code_changes", []) or []:
+            cid = change.get("id", mid)
+            hits += scan_text(change.get("doc_diff", ""), f"{cid}.doc_diff")
+            hits += scan_text(change.get("comments", ""), f"{cid}.comments")
+            # Only added lines of a code diff carry our new comments.
+            added = "\n".join(
+                ln[1:] for ln in (change.get("diff", "") or "").splitlines()
+                if ln.startswith("+") and not ln.startswith("+++")
+            )
+            hits += scan_text(added, f"{cid}.diff(+)")
+        doc = ms.get("documentation") or {}
+        hits += scan_text(doc.get("module_comment") or "", f"{mid}.module_comment")
+        for fb in doc.get("function_blocks", []) or []:
+            hits += scan_text(fb.get("comment", ""), f"{mid}.function_blocks")
+        for ic in doc.get("inline_comments", []) or []:
+            hits += scan_text(ic.get("comment", ""), f"{mid}.inline_comments")
+        for ds in doc.get("docstrings", []) or []:
+            hits += scan_text(ds.get("docstring", ""), f"{mid}.docstrings")
+    return hits
+
+
+def format_scan_report(hits: list[TemporalHit]) -> str:
+    """Render scan hits as an XML-ish report for agent consumption."""
+    if not hits:
+        return "<temporal_scan>PASS: zero temporal-contamination hits.</temporal_scan>"
+    lines = [f'<temporal_scan hits="{len(hits)}">']
+    for h in hits:
+        lines.append(
+            f'  <hit field="{h.field}" line="{h.line_no}" '
+            f'class="{h.question_id}" signal="{h.signal}">{h.text}</hit>'
+        )
+    lines.append("</temporal_scan>")
     return "\n".join(lines)

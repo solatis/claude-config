@@ -197,6 +197,10 @@ def cmd_update_item(state_dir: str, phase: str, args: list[str]):
         # Version increments on status change
         item["version"] = item.get("version", 1) + 1
         item["status"] = status
+        # F5: track per-item fix<->verify fail count so the convergence guard
+        # can stop an item looping more than the cap. Increment only on FAIL.
+        if status == "FAIL":
+            item["fail_count"] = item.get("fail_count", 0) + 1
         if finding:
             item["finding"] = finding
         elif "finding" in item and status == "PASS":
@@ -341,12 +345,59 @@ def cmd_assign_group(state_dir: str, phase: str, args: list[str]):
     ))
 
 
+def cmd_accept_item(state_dir: str, phase: str, args: list[str]):
+    """Override-accept a FAIL item with a recorded rationale (F5).
+
+    Used to resolve the loop-convergence escalation gate: a MUST item that has
+    failed past the per-item cap is accepted (accepted=True + acceptance_reason)
+    so it stops blocking the workflow, with the human's reason on record.
+    """
+    if not args:
+        error_exit("Usage: accept-item <id> --reason <text>")
+
+    item_id = args[0]
+    reason = None
+    i = 1
+    while i < len(args):
+        if args[i] == "--reason" and i + 1 < len(args):
+            reason = args[i + 1]
+            i += 2
+        else:
+            i += 1
+
+    if not reason:
+        error_exit("--reason required: record why this item is accepted despite failing")
+
+    qr_path = get_qr_path(state_dir, phase)
+    if not qr_path.exists():
+        error_exit(f"QR state file not found: {qr_path}")
+
+    with open(qr_path, "r+") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        qr_state = load_qr_state_locked(f)
+        idx, item = find_item(qr_state, item_id)
+        if idx < 0:
+            error_exit(f"Item {item_id} not found in qr-{phase}.json")
+        item["accepted"] = True
+        item["acceptance_reason"] = reason
+        item["version"] = item.get("version", 1) + 1
+        qr_state["items"][idx] = item
+        save_qr_state_atomic(state_dir, phase, qr_state)
+
+    print_entity_result(EntityResult(
+        id=item_id,
+        version=item["version"],
+        operation="accepted"
+    ))
+
+
 COMMANDS = {
     "update-item": cmd_update_item,
     "get-item": cmd_get_item,
     "list-items": cmd_list_items,
     "summary": cmd_summary,
     "assign-group": cmd_assign_group,
+    "accept-item": cmd_accept_item,
 }
 
 

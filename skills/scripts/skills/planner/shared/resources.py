@@ -69,6 +69,51 @@ def get_context_path(state_dir: str) -> Path:
     """
     return Path(state_dir) / "context.json"
 
+
+def default_state_root() -> Path:
+    """Persistent root for planner state directories (never /tmp).
+
+    The planner is deployed at <project>/.claude/skills/scripts/...; state
+    belongs at <project>/.claude/planner-state/ -- persistent across session
+    restarts and git-ignored. Walks up from this file to the nearest `.claude`
+    ancestor; falls back to <cwd>/.claude/planner-state when none exists
+    (standalone dev checkout).
+
+    WHY persistent (not tempfile.mkdtemp in /tmp): a session-limit restart
+    wipes /tmp, destroying an in-progress plan one step before the final
+    write. This is F1 in PLANNER-HARNESS-FIX-ROADMAP.md -- it cost an entire
+    completed plan on the first real run.
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if parent.name == ".claude" and parent.is_dir():
+            return parent / "planner-state"
+    return Path.cwd() / ".claude" / "planner-state"
+
+
+def create_state_dir(explicit: str | None) -> str:
+    """Resolve the state directory for step 1 (init).
+
+    If `explicit` is given (--state-dir), honor it verbatim (creating it if
+    needed) so a killed run can be resumed against the SAME directory with
+    zero loss. Otherwise mint a fresh persistent directory under
+    default_state_root().
+
+    WHY step 1 honors --state-dir (it previously self-generated /tmp and
+    ignored the flag): resumability. The orchestrator -- or a human after a
+    restart -- can re-run step 1 against an existing dir to recover state
+    instead of starting over. F1 in PLANNER-HARNESS-FIX-ROADMAP.md.
+    """
+    import tempfile
+
+    if explicit:
+        path = Path(explicit).expanduser()
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
+    root = default_state_root()
+    root.mkdir(parents=True, exist_ok=True)
+    return tempfile.mkdtemp(prefix="planner-", dir=str(root))
+
 # WHY explicit __all__ update: resources.py uses __all__ (lines 23-32) to enforce
 # public API contract. STATE_DIR_ARG_REQUIRED and get_context_path must be listed
 # because sub-agent scripts import them directly. Implicit exports would work but
@@ -81,6 +126,8 @@ __all__ = [
     "load_context_block",
     "STATE_DIR_ARG_REQUIRED",
     "get_context_path",
+    "default_state_root",
+    "create_state_dir",
     "render_context_file",
     "PlannerResourceProvider",
     "validate_state_dir_requirement",
