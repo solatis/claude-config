@@ -23,7 +23,6 @@ QR Block Pattern (4 steps per phase):
 
 import argparse
 import sys
-import tempfile
 from datetime import datetime
 
 from skills.lib.workflow.types import AgentRole, Dispatch
@@ -125,8 +124,11 @@ def init_step(title, actions):
     def handler(ctx):
         import json
         from pathlib import Path
+        from skills.planner.shared.resources import create_state_dir
 
-        state_dir = tempfile.mkdtemp(prefix="planner-")
+        # Honor an explicit --state-dir (resumable); otherwise mint a fresh
+        # persistent dir under .claude/planner-state/ -- never /tmp (F1).
+        state_dir = create_state_dir(ctx.get("state_dir"))
 
         plan_skeleton = {
             "schema_version": 2,
@@ -145,8 +147,12 @@ def init_step(title, actions):
             "milestones": [],
             "waves": [],
         }
+        # Resume-safe: never clobber an existing plan.json. Re-running step 1
+        # against a populated --state-dir (e.g. after a restart) must preserve
+        # prior work, not reset it to the skeleton (F1).
         plan_path = Path(state_dir) / "plan.json"
-        plan_path.write_text(json.dumps(plan_skeleton, indent=2))
+        if not plan_path.exists():
+            plan_path.write_text(json.dumps(plan_skeleton, indent=2))
 
         print(f"STATE_DIR={state_dir}")
 
