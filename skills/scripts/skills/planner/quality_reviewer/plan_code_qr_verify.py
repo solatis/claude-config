@@ -17,7 +17,7 @@ from skills.planner.shared.qr.utils import (
     format_qr_result,
 )
 from skills.planner.shared.schema import get_qa_state_schema_example
-from .qr_verify_base import VerifyBase
+from .qr_verify_base import VerifyBase, PLAN_INTENT_FIDELITY_NOTE
 
 
 PHASE = "plan-code"
@@ -34,7 +34,9 @@ class PlanCodeVerify(VerifyBase):
         scope = item.get("scope", "*")
         check = item.get("check", "")
 
-        guidance = []
+        # Plan-phase verifiers judge intent fidelity, not applied/byte-exact
+        # state (F3). Lead with the scope note so every check inherits it.
+        guidance = list(PLAN_INTENT_FIDELITY_NOTE)
 
         if scope == "*":
             # Macro check
@@ -76,24 +78,30 @@ class PlanCodeVerify(VerifyBase):
         # Add check-specific guidance
         if "context lines" in check.lower() or "context line" in check.lower():
             guidance.extend([
-                "CONTEXT LINE VERIFICATION:",
+                "CONTEXT LINE VERIFICATION (intent fidelity):",
                 "  1. Extract diff content from code_change",
                 "  2. Identify context lines (lines starting with ' ')",
-                "  3. Read actual file from codebase",
-                "  4. Search for exact pattern match",
-                "  - PASS: Context patterns found in file",
-                "  - FAIL: Patterns not found (context drift)",
+                "  3. Read the CURRENT file from the codebase (un-migrated)",
+                "  4. Search for the context pattern in that current content",
+                "  - PASS: Context lines match real current-file content, so the",
+                "          diff describes the change against the right anchor.",
+                "  - FAIL: Context lines do NOT exist in the current file (the diff",
+                "          mis-describes the change). Do NOT FAIL merely because the",
+                "          post-change lines aren't present yet -- they shouldn't be.",
                 "",
             ])
         elif "diff format" in check.lower() or "rule 0" in check.lower():
             guidance.extend([
-                "DIFF FORMAT VERIFICATION:",
+                "DIFF FORMAT VERIFICATION (intent fidelity):",
                 "  RULE 0: File path must be exact (--- a/path, +++ b/path)",
-                "  RULE 1: Context lines must exist in actual file",
-                "  RULE 2: Function context in @@ header must be accurate",
+                "  RULE 1: Context/removed lines must exist in the CURRENT file",
+                "          (the diff anchors to real content)",
                 "  - Check: --- a/ and +++ b/ headers present and valid",
-                "  - Check: @@ line has valid line numbers",
                 "  - Check: +/- prefixes used correctly",
+                "  ADVISORY (do NOT FAIL on these in a plan):",
+                "  - @@ line numbers / offsets -- approximate is fine; a tool",
+                "    recomputes them at apply time.",
+                "  - git-apply-cleanliness -- reserved for the exec/impl phase.",
                 "",
             ])
         elif "intent" in check.lower() and "ref" in check.lower():

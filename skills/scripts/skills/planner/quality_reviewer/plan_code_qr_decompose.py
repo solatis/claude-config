@@ -26,12 +26,17 @@ STEP_1_ABSORB = """\
 Read plan.json from STATE_DIR:
   cat $STATE_DIR/plan.json | jq '.'
 
-SCOPE: Code correctness in planned changes.
+SCOPE: Code correctness in planned changes -- judged as INTENT FIDELITY.
+This is a PLAN: the working tree is intentionally NOT migrated, nobody
+`git apply`s these hunks, and @@ offsets are advisory. Verify that each diff
+correctly DESCRIBES its change against the CURRENT file; do NOT FAIL because
+the file still shows the pre-change state or because line numbers are
+approximate. git-apply-cleanliness is the exec/impl phase's job.
 
 Focus on:
   - milestones[].code_intents[] -- what changes are intended
   - milestones[].code_changes[] -- actual diff content
-  - code_changes[].diff (context lines must match codebase)
+  - code_changes[].diff (context lines must match the CURRENT codebase)
   - code_changes[].why_comments[].decision_ref (refs must exist)
 
 OUT OF SCOPE (already verified in plan-docs phase):
@@ -41,13 +46,19 @@ OUT OF SCOPE (already verified in plan-docs phase):
 
 
 STEP_2_CONCERNS = """\
-Brainstorm concerns specific to CODE CORRECTNESS:
-  - Context lines don't match actual codebase
-  - Diff format violations (missing +/- prefixes, wrong line counts)
+Brainstorm concerns specific to CODE CORRECTNESS (intent fidelity):
+  - Context lines don't match the CURRENT codebase (diff anchors to nothing)
+  - Diff mis-describes the change: wrong file, wrong transform
+  - Diff format violations (missing +/- prefixes, wrong file headers)
   - Code_intents without corresponding code_changes
   - Invalid decision_refs in why_comments
   - Type errors, missing imports, API mismatches
   - Convention violations (per project style)
+
+DO NOT raise these as failures (advisory in a plan):
+  - @@ line numbers / hunk offsets being approximate
+  - The diff not applying git-clean (checked in exec/impl phase)
+  - The file 'still' showing the pre-change state (it should -- not migrated)
 
 DO NOT brainstorm documentation concerns (out of scope for this phase)."""
 

@@ -117,3 +117,58 @@ class TestStepTypeInvariants:
             for step in range(1, total + 1):
                 step_type, _ = get_step_type(step, n)
                 assert step_type in ("CONTEXT", "ANALYZE", "CONFIRM", "SUMMARY")
+
+
+class TestPlanPhaseIntentFidelity:
+    """F3: plan-phase verifiers judge intent fidelity, not applied/byte-exact
+    state. A correct plan diff with approximate offsets must pass; only a diff
+    that mis-describes the change fails.
+    """
+
+    def _guidance(self, check: str) -> str:
+        from skills.planner.quality_reviewer.plan_code_qr_verify import PlanCodeVerify
+        item = {"id": "QR-1", "scope": "code_change:CC-M-001-001", "check": check}
+        return "\n".join(PlanCodeVerify().get_verification_guidance(item, "/sd"))
+
+    def test_intent_fidelity_note_is_present(self):
+        body = self._guidance("diff format rule 0")
+        assert "PLAN-PHASE SCOPE" in body
+        assert "ADVISORY" in body or "advisory" in body
+
+    def test_diff_format_offsets_are_advisory(self):
+        body = self._guidance("diff format rule 0")
+        # @@ offsets / git-apply must be explicitly advisory, not a FAIL trigger.
+        assert "ADVISORY" in body
+        assert "@@ line numbers" in body
+        # The old implementation-grade RULE 2 must be gone.
+        assert "Function context in @@ header must be accurate" not in body
+        assert "@@ line has valid line numbers" not in body
+
+    def test_context_line_check_targets_current_file(self):
+        body = self._guidance("context lines")
+        assert "CURRENT file" in body
+        # Old false-FAIL framing removed.
+        assert "context drift" not in body
+        # Must explicitly forbid failing on missing post-change state.
+        assert "shouldn't be" in body or "should -- not migrated" in body or "post-change" in body
+
+    def test_decompose_prompts_frame_intent_fidelity(self):
+        from skills.planner.quality_reviewer.plan_code_qr_decompose import (
+            STEP_1_ABSORB, STEP_2_CONCERNS,
+        )
+        assert "INTENT FIDELITY" in STEP_1_ABSORB
+        assert "git apply" in STEP_1_ABSORB
+        # Concerns must list offset/apply-cleanliness as NON-failures.
+        assert "advisory in a plan" in STEP_2_CONCERNS
+        assert "exec/impl phase" in STEP_2_CONCERNS
+
+    def test_design_and_docs_verify_have_no_byte_exact_checks(self):
+        """The design/docs verify twins must not carry git-apply / offset
+        checks (those never belonged there)."""
+        from skills.planner.quality_reviewer.plan_design_qr_verify import PlanDesignVerify
+        from skills.planner.quality_reviewer.plan_docs_qr_verify import PlanDocsVerify
+        for cls, check in [(PlanDesignVerify, "decision_log"), (PlanDocsVerify, "temporal")]:
+            body = "\n".join(cls().get_verification_guidance(
+                {"id": "X", "scope": "*", "check": check}, "/sd"))
+            assert "git apply" not in body.lower()
+            assert "@@ line has valid line numbers" not in body
