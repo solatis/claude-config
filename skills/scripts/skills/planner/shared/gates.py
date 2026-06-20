@@ -28,6 +28,60 @@ class GateResult:
     terminal_pass: bool
 
 
+def _build_escalation_gate(
+    module_path: str,
+    qr_name: str,
+    parts: list,
+    escalations: list,
+    work_step: int,
+    pass_step: int | None,
+    fix_target,
+    state_dir: str,
+    phase: str | None) -> GateResult:
+    """F5: render a single human-decision gate for MUST items past the cap.
+
+    The orchestrator has fixed the same MUST item `cap` times without it
+    passing. Rather than loop again, present the operator with exactly two
+    resolutions: keep fixing, or override-accept with a recorded rationale.
+    """
+    parts.append("LOOP CONVERGENCE GUARD (F5): a MUST item has failed the fix")
+    parts.append("cycle past the per-item cap. Do NOT re-loop silently.")
+    parts.append("")
+    parts.append("Items requiring a decision:")
+    for it in escalations:
+        parts.append(
+            f"  - {it.get('id', '?')} [{it.get('severity', 'MUST')}], "
+            f"failed {it.get('fail_count', 0)}x: {it.get('finding') or it.get('check', '')}"
+        )
+    parts.append("")
+    parts.append("Surface this to the user via AskUserQuestion with two options:")
+    parts.append("  1. KEEP FIXING -- try another fix iteration on these items.")
+    parts.append("  2. OVERRIDE-ACCEPT -- accept with a recorded rationale and proceed.")
+    parts.append("")
+    keep_cmd = f"python3 -m {module_path} --step {work_step} --state-dir {state_dir}"
+    proceed_cmd = (
+        f"python3 -m {module_path} --step {pass_step} --state-dir {state_dir}"
+        if pass_step is not None else ""
+    )
+    parts.append("If KEEP FIXING:")
+    parts.append(f"  {keep_cmd}")
+    parts.append("")
+    parts.append("If OVERRIDE-ACCEPT (record the rationale on each item first):")
+    phase_arg = phase or "<phase>"
+    for it in escalations:
+        parts.append(
+            f"  python3 -m skills.planner.cli.qr --state-dir {state_dir} "
+            f"--qr-phase {phase_arg} accept-item {it.get('id', '?')} "
+            "--reason '<why accepting>'"
+        )
+    parts.append(f"  then: {proceed_cmd or '(terminal -- workflow complete)'}")
+
+    body = "\n".join(parts)
+    title = f"{qr_name} Gate - Human Decision Required"
+    # Non-terminal: a human chooses the next command; no deterministic next.
+    return GateResult(output=format_step(body, title=title), terminal_pass=False)
+
+
 def build_gate_output(
     module_path: str,
     script_name: str,
@@ -38,16 +92,28 @@ def build_gate_output(
     pass_step: int | None,
     pass_message: str,
     fix_target: AgentRole | None,
-    state_dir: str) -> GateResult:
+    state_dir: str,
+    escalations: list | None = None,
+    phase: str | None = None) -> GateResult:
     """Build complete gate step output for QR gates.
 
     Gates route to either:
     - pass_step: QR passed, proceed to next workflow phase
     - work_step: QR failed, loop back to fix issues
+
+    F5: when `escalations` is non-empty and QR did not pass, a MUST item has
+    failed past the per-item convergence cap. Instead of silently re-looping,
+    the gate surfaces ONE explicit human decision.
     """
     parts = []
     parts.append(format_gate_result(passed=qr.passed))
     parts.append("")
+
+    if not qr.passed and escalations:
+        return _build_escalation_gate(
+            module_path, qr_name, parts, escalations,
+            work_step, pass_step, fix_target, state_dir, phase,
+        )
 
     if qr.passed:
         parts.append(pass_message)

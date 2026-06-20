@@ -7,6 +7,18 @@ Extended with routing configuration (moved from qr/utils.py).
 QR_ITERATION_LIMIT = 5
 QR_ITERATION_DEFAULT = 1
 
+# F5: per-item fix<->verify convergence cap. After this many FAILs on the SAME
+# item, the loop must converge or surface one decision instead of re-looping:
+#   - MUST item past the cap  -> escalate to a single human-decision gate
+#   - SHOULD/COULD past the cap -> auto-accept with rationale, proceed
+# Default 2 = two fix attempts per item before forcing resolution.
+QR_CONVERGENCE_CAP = 2
+
+
+def get_convergence_cap() -> int:
+    """Return the per-item fix<->verify fail cap (F5)."""
+    return QR_CONVERGENCE_CAP
+
 # Routing: (workflow, phase) -> (route_step, module_path, total_steps)
 # Updated for 14-step planner (was 11) and 10-step executor (was 9)
 QR_ROUTING = {

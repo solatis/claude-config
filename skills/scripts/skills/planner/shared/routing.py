@@ -18,7 +18,13 @@ Invariants:
 
 from __future__ import annotations
 
-from .qr.utils import load_qr_state, query_items, by_status, by_blocking_severity
+from .qr.utils import (
+    load_qr_state,
+    query_items,
+    by_status,
+    by_blocking_severity,
+    classify_item_convergence,
+)
 
 
 # Work phase routing registry - ALL work phases in ONE place
@@ -79,6 +85,13 @@ def detect_qr_state(state_dir: str, phase: str) -> tuple[bool, list[dict]]:
         return (False, [])
     iteration = qr_state.get("iteration", 1)
     blocking_failures = query_items(qr_state, by_status("FAIL"), by_blocking_severity(iteration))
+    # F5: items that converged out of the loop (already accepted, or SHOULD/COULD
+    # past the per-item cap) no longer route to fix mode -- otherwise one stubborn
+    # item loops forever. MUST items past the cap still block (the gate escalates).
+    blocking_failures = [
+        it for it in blocking_failures
+        if classify_item_convergence(it) not in ("accepted", "auto_accept")
+    ]
     return (len(blocking_failures) > 0, blocking_failures)
 
 
