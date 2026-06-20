@@ -156,6 +156,10 @@ if PYDANTIC_AVAILABLE:
         intent_ref: str | None = None  # CI-XXX or null for doc-only changes (READMEs)
         file: str
         diff: str = ""  # Code changes - Developer fills (empty for doc-only)
+        # F4: snippet source of truth. When provided, `diff` is tool-computed
+        # from these via difflib (the LLM never hand-authors @@ headers).
+        old_snippet: str = ""  # Exact current text to replace ("" for insertion)
+        new_snippet: str = ""  # Replacement text
         doc_diff: str = ""  # Documentation overlay - TW fills
         comments: str = ""  # WHY comments explaining the change
 
