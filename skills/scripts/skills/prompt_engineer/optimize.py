@@ -22,7 +22,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from skills.lib.workflow.prompts import format_step, format_file_content
+from skills.lib.workflow.prompts import format_step
 
 
 # ============================================================================
@@ -959,28 +959,29 @@ EXECUTE_ECOSYSTEM_INSTRUCTIONS = (
 
 
 def build_read_guide(scope: str) -> str:
-    """Build scope-specific read guide from shared template + variant parts."""
+    """Build scope-specific read guide from shared template + variant parts.
+
+    Resolves relative references/ paths to absolute filesystem paths so the
+    LLM can read files directly without guessing directory locations.
+    """
+    refs_dir = str(get_references_dir().resolve())
     v = READ_GUIDE_VARIANTS[scope]
+    # Replace relative references/ paths with absolute paths
+    categories_abs = v["categories"].replace("references/", f"{refs_dir}/")
     return (
         v["heading"] + "\n"
         "\n"
-        "All references are in the `references/` subdirectory of the prompt-engineer\n"
-        "skill directory. NOTE: *NOT* the prompt_engineer scripts directory, but the\n"
-        "prompt-engineer skill directory, which also contains the SKILL.md file.\n"
-        "\n"
-        "ALWAYS read: references/efficiency.md\n"
+        "ALWAYS read: " + refs_dir + "/efficiency.md\n"
         "  -> " + v["efficiency_note"] + "\n"
         "\n"
         + v["selection_intro"] + "\n"
-        + v["categories"] + "\n"
+        + categories_abs + "\n"
         "\n"
         + v["footer"] + "\n"
         "\n"
-        "NEVER read papers/**/* - use references/ only."
+        "Read ALL selected files in a single batch of parallel read tool calls.\n"
+        "Read ONLY from the paths listed above. Do NOT read from papers/ subdirectories."
     )
-
-
-READ_GUIDES = {s: build_read_guide(s) for s in SCOPES}
 
 
 def get_references_dir() -> Path:
@@ -992,10 +993,10 @@ def get_references_dir() -> Path:
     return Path(__file__).parent.parent.parent.parent / "prompt-engineer" / "references"
 
 
-def load_and_format_files(categories: list[str]) -> str:
-    """Load reference files for categories, return formatted blocks joined by newlines."""
+def format_file_listing(categories: list[str]) -> str:
+    """List absolute paths for reference files, for the LLM to read via tool."""
     refs_dir = get_references_dir()
-    blocks = []
+    lines = []
     for cat in categories:
         if cat not in CATEGORY_TO_FILE:
             valid = ", ".join(sorted(CATEGORY_TO_FILE.keys()))
@@ -1004,9 +1005,11 @@ def load_and_format_files(categories: list[str]) -> str:
         full_path = refs_dir / rel_path
         if not full_path.exists():
             sys.exit(f"ERROR: Reference file not found: {full_path}")
-        content = full_path.read_text()
-        blocks.append(format_file_content(f"references/{rel_path}", content))
-    return "\n\n".join(blocks)
+        lines.append(f"  - {cat}: {full_path.resolve()}")
+    return "\n".join(lines)
+
+
+READ_GUIDES = {s: build_read_guide(s) for s in SCOPES}
 
 
 def build_next_command(step: int, scope: str | None, categories: list[str] | None) -> str | None:
@@ -1116,13 +1119,16 @@ def format_output(step: int, scope: str | None, categories: list[str] | None) ->
                 body = f"{body}\n\n{CATEGORY_SELECTION_INSTRUCTIONS}"
             elif step == inj_step:
                 if categories:
-                    # Injection step with files: embed references + technique audit
-                    file_blocks = load_and_format_files(categories)
+                    # Injection step with file paths: LLM reads via tool
+                    file_listing = format_file_listing(categories)
                     body = (
                         f"TECHNIQUE REFERENCES\n"
-                        f"The following reference files have been loaded based on your "
-                        f"category selection:\n\n"
-                        f"{file_blocks}\n\n"
+                        f"You MUST read each of the following reference files IN THEIR ENTIRETY\n"
+                        f"before proceeding with this step. Read ALL files in a single batch of\n"
+                        f"parallel read tool calls for efficiency. Do NOT skip any file — read\n"
+                        f"each one completely from start to finish.\n\n"
+                        f"{file_listing}\n\n"
+                        f"After reading ALL files above, proceed with the instructions below.\n\n"
                         f"{body}\n\n"
                         f"{TECHNIQUE_AUDIT_INSTRUCTIONS}"
                     )
