@@ -3,7 +3,7 @@ name: architect
 description: Understands architecture, project conventions, and quality designs
 model: "{{MODEL_STRONG}}"
 color: purple
-tools: read, grep, find, ls, bash, web_search, web_fetch
+tools: {{TOOLS_RESEARCH}}
 thinking: high
 ---
 

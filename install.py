@@ -26,6 +26,9 @@ TOOL_PROFILES = {
         "MODEL_STRONG": "opus",
         "MODEL_GENERAL_PURPOSE": "sonnet",
         "MODEL_CHEAP": "haiku",
+        "TOOLS_READONLY": "Read, Grep, Glob, Bash",
+        "TOOLS_WRITE": "Read, Grep, Glob, Bash, Write, Edit",
+        "TOOLS_RESEARCH": "Read, Grep, Glob, Bash, WebSearch, WebFetch",
     },
     "pi": {
         "CONFIG_DIR": ".pi/agent",
@@ -46,6 +49,9 @@ TOOL_PROFILES = {
 
 TEMPLATE_DEFAULTS = {
     "AGENTS_MD": "AGENTS.md",
+    "TOOLS_READONLY": "read, grep, find, ls, bash",
+    "TOOLS_WRITE": "read, grep, find, ls, bash, write",
+    "TOOLS_RESEARCH": "read, grep, find, ls, bash, web_search, web_fetch",
 }
 
 TEMPLATE_PATTERN = re.compile(r"\{\{(\w+)\}\}")

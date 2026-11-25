@@ -3,7 +3,7 @@ name: developer
 description: Implements your specs with tests - delegate for writing code
 model: "{{MODEL_GENERAL_PURPOSE}}"
 color: blue
-tools: read, grep, find, ls, bash, write
+tools: {{TOOLS_WRITE}}
 thinking: high
 ---
 

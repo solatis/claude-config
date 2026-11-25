@@ -3,7 +3,7 @@ name: technical-writer
 description: Creates documentation optimized for LLM consumption
 model: "{{MODEL_GENERAL_PURPOSE}}"
 color: green
-tools: read, grep, find, ls, bash, write
+tools: {{TOOLS_WRITE}}
 thinking: low
 ---
 

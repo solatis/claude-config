@@ -3,7 +3,7 @@ name: quality-reviewer
 description: Reviews code and plans for production risks, project conformance, and structural quality
 model: "{{MODEL_GENERAL_PURPOSE}}"
 color: orange
-tools: read, grep, find, ls, bash
+tools: {{TOOLS_READONLY}}
 thinking: high
 ---
 

@@ -3,7 +3,7 @@ name: debugger
 description: Analyzes bugs through systematic evidence gathering - use for complex debugging
 model: "{{MODEL_GENERAL_PURPOSE}}"
 color: cyan
-tools: read, grep, find, ls, bash, write
+tools: {{TOOLS_WRITE}}
 thinking: high
 ---
 
